@@ -1,7 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Updated for monorepo layout (frontend/ + backend/).
 
-# dependencies
-/node_modules
+# ─── Dependencies ──────────────────────────────────────────────────────────────
+**/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -10,32 +11,48 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# ─── Build Output ──────────────────────────────────────────────────────────────
+# Next.js
+**/.next/
+**/out/
 
-# next.js
-/.next/
-/out/
+# Generic build / production folders
+**/build/
 
-# production
-/build
+# Backend compiled output
+backend/dist/
 
-# misc
-.DS_Store
-*.pem
+# ─── Testing ───────────────────────────────────────────────────────────────────
+**/coverage/
 
-# debug
+# ─── Environment & Secrets ─────────────────────────────────────────────────────
+.env*
+*.env
+
+# ─── TypeScript ────────────────────────────────────────────────────────────────
+**/*.tsbuildinfo
+**/next-env.d.ts
+
+# ─── Logs ──────────────────────────────────────────────────────────────────────
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# ─── OS / Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
 
-# vercel
+# ─── Security ──────────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.cert
+
+# ─── Test / Sample Files ───────────────────────────────────────────────────────
+sample_resume.pdf
+
+# ─── Vercel ────────────────────────────────────────────────────────────────────
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
