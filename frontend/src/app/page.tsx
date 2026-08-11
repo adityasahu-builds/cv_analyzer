@@ -26,7 +26,7 @@ import { ResumeAnalysisReport } from '@/types/resume';
 
 import { AnalysisLoading } from '@/components/sections/AnalysisLoading';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
 
 export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -64,7 +64,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const parseResponse = await fetch(`${API_BASE_URL}/parse`, {
+      const parseResponse = await fetch(`${API_BASE_URL}/api/parse`, {
         method: 'POST',
         headers: {
           'x-correlation-id': requestId,
@@ -88,7 +88,7 @@ export default function Home() {
 
       // 2. Step 2: AI Analysis
       setAnalysisPhase('analyzing');
-      const analyzeResponse = await fetch(`${API_BASE_URL}/analyze`, {
+      const analyzeResponse = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
