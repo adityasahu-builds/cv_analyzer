@@ -2,6 +2,9 @@ import { ParsedResumeData, ResumeAnalysisReport } from '../types/resume';
 import { getAIConfig } from './config';
 import { analyzeWithGemini } from './providers/geminiProvider';
 import { analyzeWithGroq, GroqVisualPdfUnsupportedError } from './providers/groqProvider';
+import { normalizeParsedResumeData, computeResumeHash, computeJobDescriptionHash } from '../services/normalizer';
+import { applyDeterministicScoring, SCORING_VERSION } from '../services/deterministicScorer';
+import { analysisCache } from '../services/analysisCache';
 
 export class AIOrchestrationError extends Error {
   primaryProvider: string;
@@ -30,69 +33,161 @@ export interface OrchestrationResult {
   provider: string;
   fallbackUsed: boolean;
   durationMs: number;
+  cached?: boolean;
 }
 
 export class AIOrchestrator {
   async analyzeResume(
     resumeData: ParsedResumeData,
-    correlationId: string = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    correlationId: string = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    jobDescription?: string,
+    forceRefresh: boolean = false
   ): Promise<OrchestrationResult> {
     const startTime = Date.now();
     const config = getAIConfig();
 
-    console.log(`[AIOrchestrator] [${correlationId}] Starting analysis. Primary=${config.primaryProvider}, Fallback=${config.fallbackProvider}`);
+    // 1. Normalize Resume Data & Hashes
+    const normalizedResume = normalizeParsedResumeData(resumeData);
+    const resumeHash = computeResumeHash(normalizedResume);
+    const jobDescriptionHash = computeJobDescriptionHash(jobDescription);
+
+    const primaryName = config.primaryProvider.toLowerCase();
+    const primaryModel = primaryName === 'gemini' ? config.geminiModel : config.groqModel;
+
+    // 2. Compute Cache Identity Key
+    const cacheKey = analysisCache.generateCacheKey(
+      resumeHash,
+      jobDescriptionHash,
+      config.primaryProvider,
+      primaryModel
+    );
+
+    // 3. Check Cache (if not forceRefresh)
+    if (!forceRefresh) {
+      const cached = analysisCache.get(cacheKey);
+      if (cached) {
+        const durationMs = Date.now() - startTime;
+        console.log(`[AIOrchestrator] [${correlationId}] Returned CACHED analysis for resumeHash=${resumeHash.slice(0, 8)} in ${durationMs}ms with overallScore=${cached.report.overallScore}`);
+        return {
+          report: {
+            ...cached.report,
+            diagnostics: {
+              ...cached.report.diagnostics,
+              cached: true,
+              correlationId,
+            },
+          },
+          provider: cached.provider,
+          fallbackUsed: false,
+          durationMs,
+          cached: true,
+        };
+      }
+    }
+
+    console.log(`[AIOrchestrator] [${correlationId}] Starting live analysis. Primary=${config.primaryProvider}, Fallback=${config.fallbackProvider}, ResumeHash=${resumeHash.slice(0, 8)}`);
 
     let primaryErrorMsg = '';
-    const primaryName = config.primaryProvider.toLowerCase();
     const fallbackName = config.fallbackProvider.toLowerCase();
 
-    // 1. Execute Primary Provider
+    // 4. Execute Primary Provider
     try {
       console.log(`[AIOrchestrator] Attempting Primary Provider: ${config.primaryProvider}`);
-      let report: ResumeAnalysisReport;
+      let rawReport: ResumeAnalysisReport;
 
       if (primaryName === 'gemini') {
-        report = await analyzeWithGemini(resumeData, correlationId);
+        rawReport = await analyzeWithGemini(normalizedResume, correlationId, jobDescription);
       } else if (primaryName === 'groq') {
-        report = await analyzeWithGroq(resumeData, correlationId);
+        rawReport = await analyzeWithGroq(normalizedResume, correlationId, jobDescription);
       } else {
         throw new Error(`Unsupported primary provider: '${config.primaryProvider}'`);
       }
 
+      // Apply deterministic scoring layer
+      const report = applyDeterministicScoring(rawReport, normalizedResume, jobDescription);
       const durationMs = Date.now() - startTime;
+
+      // Inject DEV Debug Diagnostics
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (isDev) {
+        report.diagnostics = {
+          analysisId: correlationId,
+          resumeHash,
+          jobDescriptionHash,
+          analysisVersion: SCORING_VERSION,
+          provider: report.providerUsed || config.primaryProvider,
+          model: primaryModel,
+          temperature: 0,
+          scoringVersion: SCORING_VERSION,
+          cached: false,
+        };
+      }
+
+      // Save to cache
+      analysisCache.set(cacheKey, resumeHash, jobDescriptionHash, config.primaryProvider, primaryModel, report);
+
       console.log(`[AIOrchestrator] Primary Provider (${config.primaryProvider}) succeeded in ${durationMs}ms with overallScore=${report.overallScore}`);
       return {
         report,
         provider: report.providerUsed || config.primaryProvider,
         fallbackUsed: false,
         durationMs,
+        cached: false,
       };
     } catch (primaryErr) {
       primaryErrorMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
       console.warn(`[AIOrchestrator] Primary Provider (${config.primaryProvider}) failed: ${primaryErrorMsg}`);
     }
 
-    // 2. Execute Fallback Provider (if specified and different)
+    // 5. Execute Fallback Provider (if specified and different)
     if (fallbackName && fallbackName !== primaryName) {
       try {
         console.log(`[AIOrchestrator] Attempting Fallback Provider: ${config.fallbackProvider}`);
-        let fallbackReport: ResumeAnalysisReport;
+        let rawFallbackReport: ResumeAnalysisReport;
 
         if (fallbackName === 'groq') {
-          fallbackReport = await analyzeWithGroq(resumeData, correlationId);
+          rawFallbackReport = await analyzeWithGroq(normalizedResume, correlationId, jobDescription);
         } else if (fallbackName === 'gemini') {
-          fallbackReport = await analyzeWithGemini(resumeData, correlationId);
+          rawFallbackReport = await analyzeWithGemini(normalizedResume, correlationId, jobDescription);
         } else {
           throw new Error(`Unsupported fallback provider: '${config.fallbackProvider}'`);
         }
 
+        // Apply deterministic scoring layer
+        const fallbackReport = applyDeterministicScoring(rawFallbackReport, normalizedResume, jobDescription);
         const durationMs = Date.now() - startTime;
+
+        const isDev = process.env.NODE_ENV !== 'production';
+        if (isDev) {
+          fallbackReport.diagnostics = {
+            analysisId: correlationId,
+            resumeHash,
+            jobDescriptionHash,
+            analysisVersion: SCORING_VERSION,
+            provider: fallbackReport.providerUsed || config.fallbackProvider,
+            model: config.groqModel,
+            temperature: 0,
+            scoringVersion: SCORING_VERSION,
+            cached: false,
+          };
+        }
+
+        // Save to cache under fallback key
+        const fallbackCacheKey = analysisCache.generateCacheKey(
+          resumeHash,
+          jobDescriptionHash,
+          config.fallbackProvider,
+          config.groqModel
+        );
+        analysisCache.set(fallbackCacheKey, resumeHash, jobDescriptionHash, config.fallbackProvider, config.groqModel, fallbackReport);
+
         console.log(`[AIOrchestrator] Fallback Provider (${config.fallbackProvider}) succeeded in ${durationMs}ms with overallScore=${fallbackReport.overallScore}`);
         return {
           report: fallbackReport,
           provider: fallbackReport.providerUsed || config.fallbackProvider,
           fallbackUsed: true,
           durationMs,
+          cached: false,
         };
       } catch (fallbackErr) {
         const fallbackErrorMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);

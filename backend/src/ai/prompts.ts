@@ -5,27 +5,21 @@ export function smartTruncateResumeText(rawText: string, maxChars = 9000): strin
     return rawText || '';
   }
 
-  // Preserve key sections intelligently
   const lines = rawText.split('\n');
-  const importantSectionHeaders = /^(summary|profile|education|skills|experience|work history|projects|certifications)\b/i;
-
   let truncatedText = '';
-  let lineCount = 0;
 
   for (const line of lines) {
     if (truncatedText.length + line.length + 1 > maxChars) {
-      // If we reach max limit, append section truncation note
       truncatedText += '\n[...Text truncated for analysis context limit...]';
       break;
     }
     truncatedText += line + '\n';
-    lineCount++;
   }
 
   return truncatedText.trim();
 }
 
-export function buildResumeAnalysisPrompt(resumeData: ParsedResumeData): string {
+export function buildResumeAnalysisPrompt(resumeData: ParsedResumeData, jobDescription?: string): string {
   const isVisual = Boolean(resumeData.pdfBase64 && resumeData.pdfBase64.length > 0);
 
   const headerNotice = isVisual
@@ -36,19 +30,47 @@ export function buildResumeAnalysisPrompt(resumeData: ParsedResumeData): string 
     ? ''
     : `\nRESUME CONTENT:\n---\n${smartTruncateResumeText(resumeData.rawText || '', 12000)}\n---\n`;
 
+  const jdBlock = (jobDescription && jobDescription.trim())
+    ? `\nTARGET JOB DESCRIPTION FOR MATCHING:\n---\n${smartTruncateResumeText(jobDescription, 3000)}\n---\n`
+    : '';
+
   return `
-You are an executive ATS (Applicant Tracking System) Auditor and Senior Career Coach.
-${headerNotice} Provide a rigorous, objective evaluation.
+You are an executive ATS (Applicant Tracking System) Auditor and Senior Technical Career Coach.
+${headerNotice} Provide a rigorous, objective, and highly consistent evaluation.
+
+SCORING RUBRIC BOUNDARIES (0 to 100 per dimension):
+1. ATS Formatting & Structure (formatting):
+   - 90-100: Flawless ATS-safe layout, clear standard headings, clean hierarchy, no complex visual tables/columns.
+   - 75-89: Good structure with minor ATS layout risks.
+   - 60-74: Multiple formatting risks or non-standard section headers.
+   - <60: Severe ATS parsing risks.
+
+2. Content Quality & Depth (contentQuality):
+   - 90-100: Exceptional technical depth, clear career progression, precise role context.
+   - 75-89: Solid responsibility descriptions with standard detail.
+   - 60-74: Vague descriptions, passive wording, or missing context.
+   - <60: Lacks meaningful substance or detail.
+
+3. Impact Bullet Measurability (impactMeasurability):
+   - 90-100: >50% of bullet points contain explicit metrics, percentages, revenue impact, or team scale.
+   - 75-89: Moderate quantification across experience bullets.
+   - 60-74: Mostly task-oriented bullets lacking measurable business metrics.
+   - <60: Zero or minimal metrics across experience section.
+
+4. Skills & Keyword Taxonomies (skillsTaxonomy):
+   - 90-100: Rich, relevant tech stack keywords matching target role demands.
+   - 75-89: Adequate core skill coverage.
+   - 60-74: Key industry tools/technologies missing.
+   - <60: Sparse skill list.
 
 Return ONLY a valid JSON object matching this exact JSON schema:
 
 {
-  "overallScore": number (integer between 0 and 100 representing total ATS & impact score),
-  "summary": "string (executive 2-3 sentence overview of the resume quality and ATS readiness)",
+  "summary": "string (executive 2-3 sentence overview of resume quality and ATS readiness)",
   "sections": {
     "formatting": {
       "name": "ATS Formatting & Structure",
-      "score": number (0-100),
+      "score": number (0-100 integer based on rubric),
       "weight": 0.25,
       "feedback": "string",
       "strengths": ["string"],
@@ -56,7 +78,7 @@ Return ONLY a valid JSON object matching this exact JSON schema:
     },
     "contentQuality": {
       "name": "Content Quality & Depth",
-      "score": number (0-100),
+      "score": number (0-100 integer based on rubric),
       "weight": 0.30,
       "feedback": "string",
       "strengths": ["string"],
@@ -64,7 +86,7 @@ Return ONLY a valid JSON object matching this exact JSON schema:
     },
     "impactMeasurability": {
       "name": "Impact Bullet Measurability",
-      "score": number (0-100),
+      "score": number (0-100 integer based on rubric),
       "weight": 0.25,
       "feedback": "string",
       "strengths": ["string"],
@@ -72,7 +94,7 @@ Return ONLY a valid JSON object matching this exact JSON schema:
     },
     "skillsTaxonomy": {
       "name": "Skills & Keyword Taxonomies",
-      "score": number (0-100),
+      "score": number (0-100 integer based on rubric),
       "weight": 0.20,
       "feedback": "string",
       "strengths": ["string"],
@@ -91,18 +113,17 @@ Return ONLY a valid JSON object matching this exact JSON schema:
     }
   ],
   "rewrittenSummary": "string",
-  "confidenceScore": number (0.80 to 1.00)
+  "confidenceScore": number (between 85 and 99)
 }
 
 IMPORTANT CONSTRAINTS:
-1. Return ONLY the JSON object. Do not include markdown code block backticks such as \`\`\`json.
-2. Ensure scores reflect actual content depth, action verbs, layout clarity, and quantifiable metrics.
+1. Return ONLY the raw JSON object. Do not include markdown code block backticks such as \`\`\`json.
+2. Evaluate each section strictly according to the rubric boundaries.
 3. Be fair, analytical, and highly constructive.
-${contentBlock}`;
+${jdBlock}${contentBlock}`;
 }
 
-export function buildCompactGroqPrompt(resumeData: ParsedResumeData): string {
-  // NEVER include pdfBase64 or large stringified JSON objects
+export function buildCompactGroqPrompt(resumeData: ParsedResumeData, jobDescription?: string): string {
   let cleanText = resumeData.rawText ? resumeData.rawText.trim() : '';
 
   if (!cleanText) {
@@ -121,12 +142,11 @@ export function buildCompactGroqPrompt(resumeData: ParsedResumeData): string {
     cleanText = parts.join('\n\n');
   }
 
-  // Intelligently truncate if text exceeds 9000 chars (~2250 tokens)
   const normalizedText = smartTruncateResumeText(cleanText, 9000);
+  const jdText = jobDescription ? smartTruncateResumeText(jobDescription, 2000) : '';
 
   return `Analyze this resume and return JSON matching this schema:
 {
-  "overallScore": number (0-100),
   "summary": "string",
   "sections": {
     "formatting": { "name": "ATS Formatting & Structure", "score": number, "weight": 0.25, "feedback": "string", "strengths": ["string"], "improvements": ["string"] },
@@ -140,9 +160,9 @@ export function buildCompactGroqPrompt(resumeData: ParsedResumeData): string {
   "missingKeywords": ["string"],
   "improvedBullets": [{ "original": "string", "improved": "string", "reason": "string" }],
   "rewrittenSummary": "string",
-  "confidenceScore": 0.9
+  "confidenceScore": 95
 }
 
-RESUME TEXT:
+${jdText ? `TARGET JOB DESCRIPTION:\n${jdText}\n\n` : ''}RESUME TEXT:
 ${normalizedText}`;
 }

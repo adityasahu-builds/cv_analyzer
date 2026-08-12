@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 const SectionScoreSchema = z.object({
-  name: z.string(),
-  score: z.number().min(0).max(100),
+  name: z.string().default('Section'),
+  score: z.number().min(0).max(100).default(70),
   weight: z.number().optional().default(0.25),
   feedback: z.string().default(''),
   strengths: z.array(z.string()).default([]),
@@ -10,7 +10,7 @@ const SectionScoreSchema = z.object({
 });
 
 export const ResumeAnalysisReportSchema = z.object({
-  overallScore: z.number().min(0).max(100),
+  overallScore: z.number().min(0).max(100).optional().default(0),
   summary: z.string().default(''),
   sections: z.object({
     formatting: SectionScoreSchema,
@@ -30,7 +30,7 @@ export const ResumeAnalysisReportSchema = z.object({
     })
   ).optional().default([]),
   rewrittenSummary: z.string().optional().default(''),
-  confidenceScore: z.number().min(0).max(1).default(0.9),
+  confidenceScore: z.number().min(0).max(100).default(95),
 });
 
 export type ResumeAnalysisReportSchemaType = z.infer<typeof ResumeAnalysisReportSchema>;

@@ -19,7 +19,8 @@ export function cleanJsonText(rawText: string): string {
 
 export async function analyzeWithGemini(
   resumeData: ParsedResumeData,
-  correlationId: string = 'local'
+  correlationId: string = 'local',
+  jobDescription?: string
 ): Promise<ResumeAnalysisReport> {
   const startTime = performance.now();
   const config = getAIConfig();
@@ -33,7 +34,7 @@ export async function analyzeWithGemini(
   const model = config.geminiModel || 'gemini-3.6-flash';
 
   const promptStart = performance.now();
-  const prompt = buildResumeAnalysisPrompt(resumeData);
+  const prompt = buildResumeAnalysisPrompt(resumeData, jobDescription);
   const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [];
 
   parts.push({ text: prompt });
@@ -60,7 +61,7 @@ export async function analyzeWithGemini(
       contents: [{ parts }],
       generationConfig: {
         responseMimeType: 'application/json',
-        temperature: 0.2,
+        temperature: 0.0,
       },
     }),
   });

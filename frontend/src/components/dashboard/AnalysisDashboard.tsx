@@ -92,6 +92,18 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   return (
     <div id="ats-analyzer-results" className="w-full animate-in fade-in duration-300">
 
+      {/* DEV DIAGNOSTICS */}
+      {report.diagnostics && (
+        <div className="mb-3 px-4 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-[8px] text-[11px] font-mono text-[#6B7280] flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="font-bold text-[#059669]">DEV DEBUG:</span>
+          <span>ID: {(report.diagnostics.analysisId as string) || requestId}</span>
+          <span>ResumeHash: {((report.diagnostics.resumeHash as string) || '').substring(0, 10)}...</span>
+          <span>Engine: {(report.diagnostics.provider as string) || provider}</span>
+          <span>Scoring: {(report.diagnostics.scoringVersion as string) || 'v2.0-deterministic'}</span>
+          <span>Cache: {report.diagnostics.cached ? 'HIT (Cached Result)' : 'MISS (Live Analysis)'}</span>
+        </div>
+      )}
+
       {/* TOP HEADER CONTROLS */}
       <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-[14px] shadow-token mb-6 p-5">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">

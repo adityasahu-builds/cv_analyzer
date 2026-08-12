@@ -152,6 +152,7 @@ export interface AnalyzeApiResponse {
       aiAvailable: boolean;
       fallbackUsed: boolean;
       provider: string;
+      cached?: boolean;
     };
   };
   error?: string;

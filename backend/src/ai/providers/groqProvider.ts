@@ -33,7 +33,8 @@ export function extractGroqErrorDetails(err: unknown): GroqErrorDetails {
 
 export async function analyzeWithGroq(
   resumeData: ParsedResumeData,
-  correlationId: string = 'local'
+  correlationId: string = 'local',
+  jobDescription?: string
 ): Promise<ResumeAnalysisReport> {
   const startTime = Date.now();
   const config = getAIConfig();
@@ -54,7 +55,7 @@ export async function analyzeWithGroq(
   }
 
   // Build COMPACT Groq Prompt (Never includes pdfBase64)
-  const prompt = buildCompactGroqPrompt(resumeData);
+  const prompt = buildCompactGroqPrompt(resumeData, jobDescription);
 
   const textLength = rawText.length;
   const promptLength = prompt.length;
@@ -92,7 +93,7 @@ export async function analyzeWithGroq(
       completion = await groq.chat.completions.create({
         messages,
         model,
-        temperature: 0.2,
+        temperature: 0.0,
         max_tokens: maxTokens,
         response_format: { type: 'json_object' },
       });
@@ -103,7 +104,7 @@ export async function analyzeWithGroq(
         completion = await groq.chat.completions.create({
           messages,
           model,
-          temperature: 0.2,
+          temperature: 0.0,
           max_tokens: maxTokens,
         });
       } else {

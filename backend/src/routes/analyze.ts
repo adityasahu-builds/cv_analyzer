@@ -24,15 +24,18 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     const data = parseResult.data;
+    const jobDescription = typeof body.jobDescription === 'string' ? body.jobDescription : undefined;
+    const forceRefresh = Boolean(body.forceRefresh || body.reAnalyze);
+
     const rawTextLength = data.rawText ? data.rawText.trim().length : 0;
     const hasPdfBase64 = Boolean(data.pdfBase64 && data.pdfBase64.length > 0);
 
-    console.log(`[API /api/analyze] [${correlationId}] Analyzing resume: rawTextLength=${rawTextLength}, hasPdfBase64=${hasPdfBase64}, isVisual=${Boolean(data.isVisualResume)}`);
+    console.log(`[API /api/analyze] [${correlationId}] Analyzing resume: rawTextLength=${rawTextLength}, hasPdfBase64=${hasPdfBase64}, isVisual=${Boolean(data.isVisualResume)}, forceRefresh=${forceRefresh}`);
 
-    const result = await aiOrchestrator.analyzeResume(data, correlationId);
+    const result = await aiOrchestrator.analyzeResume(data, correlationId, jobDescription, forceRefresh);
     const durationMs = Date.now() - startTime;
 
-    console.log(`[API /api/analyze] [${correlationId}] Succeeded in ${durationMs}ms: Provider=${result.provider}, FallbackUsed=${result.fallbackUsed}, OverallScore=${result.report.overallScore}`);
+    console.log(`[API /api/analyze] [${correlationId}] Succeeded in ${durationMs}ms: Provider=${result.provider}, FallbackUsed=${result.fallbackUsed}, Cached=${Boolean(result.cached)}, OverallScore=${result.report.overallScore}`);
 
     const response: AnalyzeApiResponse = {
       success: true,
@@ -42,6 +45,7 @@ router.post('/', async (req: Request, res: Response) => {
           aiAvailable: true,
           fallbackUsed: result.fallbackUsed,
           provider: result.provider,
+          cached: Boolean(result.cached),
         },
       },
       correlationId,

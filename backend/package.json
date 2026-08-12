@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test:repeatability": "npx ts-node src/testRepeatability.ts"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",

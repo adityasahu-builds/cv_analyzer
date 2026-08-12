@@ -24,4 +24,5 @@ export interface ResumeAnalysisReport {
   improvedBullets?: { original: string; improved: string; reason: string }[];
   rewrittenSummary?: string;
   confidenceScore: number;
+  diagnostics?: Record<string, unknown>;
 }
