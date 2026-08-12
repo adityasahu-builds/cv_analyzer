@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/utils/cn';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'glass' | 'ghost' | 'outline';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'accent' | 'dark' | 'glass';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   asChild?: boolean;
@@ -11,25 +11,31 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading = false, asChild, children, disabled, ...props }, ref) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl cursor-pointer';
+      'inline-flex items-center justify-center font-medium transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#059669] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-[10px] cursor-pointer select-none';
 
     const variants = {
       primary:
-        'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 border border-cyan-400/30',
+        'bg-[#059669] hover:bg-[#047857] active:bg-[#047857] text-white font-semibold shadow-sm',
+      accent:
+        'bg-[#059669] hover:bg-[#047857] text-white font-semibold shadow-sm',
       secondary:
-        'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 border border-purple-400/30',
+        'bg-[#FFFFFF] hover:bg-[#F7F8FA] active:bg-[#E5E7EB] text-[#1A1A1A] border border-[#E5E7EB] shadow-sm',
+      dark:
+        'bg-[#1A1A1A] hover:bg-[#047857] text-white shadow-sm',
       glass:
-        'bg-white/5 hover:bg-white/10 text-gray-100 border border-white/10 backdrop-blur-md hover:border-cyan-500/40 shadow-sm',
+        'bg-[#FFFFFF]/90 hover:bg-[#FFFFFF] border border-[#E5E7EB] text-[#1A1A1A]',
       outline:
-        'bg-transparent border border-gray-700 hover:border-gray-500 text-gray-200 hover:text-white',
+        'bg-transparent border border-[#E5E7EB] hover:border-[#059669] text-[#6B7280] hover:text-[#1A1A1A] hover:bg-[#F7F8FA]',
       ghost:
-        'bg-transparent hover:bg-white/5 text-gray-300 hover:text-white',
+        'bg-transparent text-[#6B7280] hover:text-[#1A1A1A] hover:bg-[#F7F8FA]',
+      danger:
+        'bg-red-600 hover:bg-red-700 text-white shadow-sm',
     };
 
     const sizes = {
       sm: 'px-3 py-1.5 text-xs',
-      md: 'px-4 py-2.5 text-sm',
-      lg: 'px-6 py-3.5 text-base font-semibold',
+      md: 'px-4 py-2 text-sm',
+      lg: 'px-5 py-2.5 text-base',
     };
 
     return (

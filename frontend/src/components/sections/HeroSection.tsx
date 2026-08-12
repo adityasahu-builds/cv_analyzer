@@ -1,132 +1,283 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight } from 'lucide-react';
-import { Container } from '@/components/ui/Container';
-import { Button } from '@/components/ui/Button';
+import React, { useEffect, useState } from 'react';
+import { ArrowRight, Check } from 'lucide-react';
 
-export const HeroSection: React.FC = () => {
-  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const rafId = useRef<number | null>(null);
+// ─── MARKETING PRODUCT DASHBOARD PREVIEW COMPONENT ─────────────────────────────
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!heroRef.current) return;
-    const rect = heroRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+const SECTION_SCORES = [
+  { label: 'ATS Compatibility',  score: 87, color: '#059669' },
+  { label: 'Content Quality',    score: 91, color: '#059669' },
+  { label: 'Keyword Coverage',   score: 84, color: '#059669' },
+  { label: 'Impact Density',     score: 78, color: '#D97706' },
+];
 
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    rafId.current = requestAnimationFrame(() => {
-      setMousePos({ x, y });
-    });
-  };
+const IMPROVEMENTS = [
+  'Add role-specific keywords to skills section',
+  'Quantify experience impact with measurable metrics',
+  'Strengthen executive summary alignment',
+];
 
+const DETECTED_KW  = ['React', 'TypeScript', 'Node.js', 'REST APIs'];
+const MISSING_KW   = ['AWS', 'Docker', 'CI/CD'];
+
+function ScoreBar({ score, color }: { score: number; color: string }) {
+  const [width, setWidth] = useState(0);
   useEffect(() => {
-    return () => {
-      if (rafId.current) cancelAnimationFrame(rafId.current);
-    };
+    const t = setTimeout(() => setWidth(score), 300);
+    return () => clearTimeout(t);
+  }, [score]);
+
+  return (
+    <div className="flex-1 h-1.5 bg-[#F7F8FA] rounded-full overflow-hidden border border-[#E5E7EB]">
+      <div
+        className="h-full rounded-full"
+        style={{
+          width: `${width}%`,
+          backgroundColor: color,
+          transition: 'width 1s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      />
+    </div>
+  );
+}
+
+// Semicircular gauge with Emerald accent
+function ScoreGauge({ score }: { score: number }) {
+  const [animScore, setAnimScore] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setAnimScore(score), 200);
+    return () => clearTimeout(t);
+  }, [score]);
+
+  const radius = 38;
+  const cx = 50;
+  const cy = 50;
+  const totalArc = Math.PI;
+  const strokeLen = radius * totalArc;
+  const dashOffset = strokeLen - (animScore / 100) * strokeLen;
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative w-24 h-14">
+        <svg viewBox="0 0 100 55" className="w-full h-full overflow-visible">
+          <path
+            d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+            fill="none"
+            stroke="#E5E7EB"
+            strokeWidth="7"
+            strokeLinecap="round"
+          />
+          <path
+            d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+            fill="none"
+            stroke="#059669"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray={`${strokeLen}`}
+            strokeDashoffset={`${dashOffset}`}
+            style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1)' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-end justify-center pb-0.5">
+          <span className="text-2xl font-extrabold leading-none text-[#1A1A1A]">
+            {score}
+          </span>
+        </div>
+      </div>
+      <span className="text-[12px] font-semibold text-[#6B7280] uppercase tracking-wider mt-1">
+        ATS Score
+      </span>
+    </div>
+  );
+}
+
+function ProductPreview() {
+  const [showBadge, setShowBadge] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShowBadge(true), 900);
+    return () => clearTimeout(t);
   }, []);
 
   return (
-    <section
-      ref={heroRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="relative z-10 pt-10 pb-16 md:pt-18 md:pb-24 overflow-hidden"
-    >
-      {/* 1. LIQUID RED AMBIENT LIGHT FIELDS (BACKGROUND) */}
-      {/* Top Left Static Deep Crimson Glow */}
-      <div className="absolute -top-20 -left-20 w-[550px] h-[550px] bg-red-950/25 rounded-full blur-[140px] pointer-events-none -z-10 animate-pulse-glow" />
-
-      {/* Mouse Follow Liquid Glow Field */}
-      <div
-        className="absolute w-[650px] h-[400px] bg-gradient-to-r from-red-900/20 via-rose-950/15 to-crimson-900/10 rounded-full blur-[150px] pointer-events-none -z-10 transition-transform duration-700 ease-out"
-        style={{
-          transform: isHovered
-            ? `translate(${mousePos.x - 325}px, ${mousePos.y - 200}px)`
-            : 'translate(20%, -10%)',
-          opacity: isHovered ? 0.85 : 0.4,
-        }}
-      />
-
-      {/* Bottom Right Deep Accent Glow */}
-      <div className="absolute -bottom-20 -right-20 w-[500px] h-[500px] bg-rose-950/20 rounded-full blur-[130px] pointer-events-none -z-10" />
-
-      {/* Radial Grid Subtle Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-10%,rgba(185,28,28,0.08),rgba(255,255,255,0))] pointer-events-none z-0" />
-
-      <Container className="relative z-10">
-        {/* 2. FLOATING LIQUID GLASS PANEL CARD */}
-        <div className="max-w-4xl mx-auto relative rounded-[32px] sm:rounded-[36px] bg-black/60 backdrop-blur-3xl border border-white/[0.08] p-8 sm:p-14 md:p-16 text-center flex flex-col items-center gap-7 sm:gap-9 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),_0_25px_60px_-15px_rgba(0,0,0,0.9),_0_0_50px_rgba(185,28,28,0.06)] overflow-hidden">
-          {/* Glass Top Edge Reflection Highlight */}
-          <div className="absolute top-0 left-12 right-12 h-[1px] bg-gradient-to-r from-transparent via-red-500/30 to-transparent pointer-events-none" />
-
-          {/* 1. TOP BADGE */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-red-950/40 border border-red-500/30 text-red-300 text-[11px] font-mono tracking-widest uppercase shadow-[0_0_15px_rgba(185,28,28,0.15)]">
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-            </span>
-            <span>AI RESUME INTELLIGENCE</span>
-          </div>
-
-          {/* 2. MAIN HEADLINE */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.06] font-sans max-w-3xl">
-            Your Resume.{' '}
-            <br className="hidden sm:inline" />
-            Built to{' '}
-            <span className="bg-gradient-to-r from-red-400 via-rose-400 to-red-500 bg-clip-text text-transparent inline-block font-black">
-              Get Noticed.
-            </span>
-          </h1>
-
-          {/* 3. SUBHEADING */}
-          <p className="text-base sm:text-lg md:text-xl text-gray-300/90 max-w-2xl font-normal leading-relaxed">
-            Upload your resume. Get an ATS score, uncover hidden gaps, and turn weak sections into stronger ones — in seconds.
-          </p>
-
-          {/* 4. PRIMARY & SECONDARY CTA BUTTONS */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 mt-1 w-full sm:w-auto">
-            {/* Primary CTA */}
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => {
-                const el = document.getElementById('ats-analyzer');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="relative group overflow-hidden w-full sm:w-auto px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-red-950 via-red-900 to-rose-950 border border-red-500/40 rounded-2xl shadow-[0_0_25px_rgba(185,28,28,0.25)] hover:shadow-[0_0_40px_rgba(185,28,28,0.45)] hover:border-red-400/80 transition-all duration-300 hover:-translate-y-0.5"
-            >
-              {/* Animated Light Sweep Overlay */}
-              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
-              <span className="flex items-center justify-center gap-2">
-                Analyze My Resume <ArrowRight className="w-4 h-4 text-red-300 group-hover:translate-x-1 transition-transform" />
+    <div className="relative p-2 rounded-[16px] bg-[#FFFFFF] border border-[#E5E7EB] shadow-token">
+      {/* Container */}
+      <div className="bg-[#FFFFFF] rounded-[14px] overflow-hidden border border-[#E5E7EB]">
+        {/* Header */}
+        <div className="px-5 pt-4 pb-3 border-b border-[#E5E7EB] bg-[#F7F8FA]">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[12px] font-semibold text-[#059669] uppercase tracking-wider block mb-1">
+                Resume Analysis Report
               </span>
-            </Button>
+              <p className="text-[16px] font-bold text-[#1A1A1A]">Candidate_Resume.pdf</p>
+              <p className="text-[12px] text-[#6B7280] mt-0.5">Verified via AI Engine</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <ScoreGauge score={87} />
+              <span className="mt-1 text-[12px] font-bold text-[#059669] bg-[#059669]/10 border border-[#059669]/20 px-2.5 py-0.5 rounded-[8px]">
+                Strong Signal
+              </span>
+            </div>
+          </div>
+        </div>
 
-            {/* Secondary CTA */}
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => {
-                const el = document.getElementById('features');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="w-full sm:w-auto px-7 py-4 text-base font-medium text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl backdrop-blur-md transition-all duration-300 hover:text-white"
-            >
-              See How It Works
-            </Button>
+        {/* Section Audit */}
+        <div className="px-5 py-3.5 border-b border-[#E5E7EB]">
+          <p className="text-[12px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2.5">
+            Category Audit Breakdown
+          </p>
+          <div className="space-y-2">
+            {SECTION_SCORES.map((s) => (
+              <div key={s.label} className="flex items-center gap-3">
+                <span className="text-[14px] text-[#6B7280] w-36 flex-shrink-0">{s.label}</span>
+                <ScoreBar score={s.score} color={s.color} />
+                <span className="text-[14px] font-bold text-[#1A1A1A] w-6 text-right flex-shrink-0 font-mono">
+                  {s.score}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top Improvements */}
+        <div className="px-5 py-3.5 border-b border-[#E5E7EB]">
+          <p className="text-[12px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2">
+            Top Priority Improvements
+          </p>
+          <div className="space-y-1.5">
+            {IMPROVEMENTS.map((imp, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-[12px] font-bold text-[#059669] mt-0.5 flex-shrink-0 w-4 font-mono">
+                  0{i + 1}
+                </span>
+                <span className="text-[14px] text-[#1A1A1A] leading-snug">{imp}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Keywords */}
+        <div className="px-5 py-3.5 bg-[#F7F8FA]">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[12px] font-semibold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                Detected
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {DETECTED_KW.map((kw) => (
+                  <span
+                    key={kw}
+                    className="text-[12px] px-2 py-0.5 bg-[#059669]/10 text-[#059669] font-semibold rounded-[8px] border border-[#059669]/20"
+                  >
+                    ✓ {kw}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                Missing
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {MISSING_KW.map((kw) => (
+                  <span
+                    key={kw}
+                    className="text-[12px] px-2 py-0.5 bg-red-50 text-red-700 font-semibold rounded-[8px] border border-red-200"
+                  >
+                    ⚠ {kw}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Badge */}
+      <div
+        className="absolute -bottom-3 -left-3 bg-[#FFFFFF] border border-[#E5E7EB] rounded-[10px] px-3.5 py-2 flex items-center gap-2.5 shadow-token transition-all duration-300"
+        style={{ opacity: showBadge ? 1 : 0, transform: showBadge ? 'translateY(0)' : 'translateY(6px)' }}
+      >
+        <div className="w-2.5 h-2.5 rounded-full bg-[#059669] shrink-0" />
+        <div>
+          <p className="text-[14px] font-bold text-[#1A1A1A] leading-none">Keyword Coverage +12%</p>
+          <p className="text-[12px] text-[#6B7280] leading-none mt-1">3 improvements recommended</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── HERO SECTION ────────────────────────────────────────────────────────────
+
+export const HeroSection: React.FC = () => {
+  const scrollTo = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+
+  return (
+    <section className="relative bg-[#F7F8FA] py-16 md:py-24 border-b border-[#E5E7EB]">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+
+          {/* ── LEFT: Marketing Copy ── */}
+          <div className="lg:col-span-7 flex flex-col items-start gap-6 max-w-2xl">
+
+            {/* Badge Eyebrow */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#059669]/10 border border-[#059669]/20 rounded-[8px]">
+              <span className="w-2 h-2 rounded-full bg-[#059669]" />
+              <span className="text-[12px] font-bold text-[#059669] uppercase tracking-wider">
+                AI RESUME ANALYZER &amp; ATS OPTIMIZER
+              </span>
+            </div>
+
+            {/* Headline — text-3xl (44px) Token */}
+            <h1 className="text-hero font-extrabold text-[#1A1A1A]">
+              Analyze your resume for ATS compatibility and <span className="text-[#059669]">recruiter impact.</span>
+            </h1>
+
+            {/* Subtitle — text-lg (18px) Token */}
+            <p className="text-subheading text-[#6B7280] leading-relaxed max-w-xl">
+              Upload your resume to get instant ATS scores, keyword matching, formatting audits, and actionable bullet improvements to accelerate your job search.
+            </p>
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full sm:w-auto">
+              <button
+                onClick={() => scrollTo('ats-analyzer')}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#059669] hover:bg-[#047857] active:bg-[#047857] text-white text-[16px] font-semibold rounded-[10px] transition-colors duration-150 shadow-sm group cursor-pointer"
+              >
+                Analyze your resume
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-150" />
+              </button>
+              <button
+                onClick={() => scrollTo('how-it-works')}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#FFFFFF] border border-[#E5E7EB] hover:bg-[#F7F8FA] text-[#1A1A1A] text-[16px] font-medium rounded-[10px] transition-colors duration-150 cursor-pointer shadow-sm"
+              >
+                See how it works
+              </button>
+            </div>
+
+            {/* Trust Microcopy */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px] font-medium text-[#6B7280] pt-2">
+              <span className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-[#059669]" /> PDF &amp; DOCX supported
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-[#059669]" /> Private analysis
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-[#059669]" /> Results in seconds
+              </span>
+            </div>
           </div>
 
-          {/* 5. SECONDARY TRUST MICROCOPY */}
-          <p className="text-xs sm:text-sm font-mono text-gray-400/80 tracking-wide -mt-2">
-            ATS analysis • AI insights • Actionable improvements
-          </p>
+          {/* ── RIGHT: Product Visual Preview ── */}
+          <div className="lg:col-span-5 w-full max-w-lg mx-auto">
+            <ProductPreview />
+          </div>
         </div>
-      </Container>
+      </div>
     </section>
   );
 };

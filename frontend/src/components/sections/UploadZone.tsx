@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, Sparkles, RefreshCw, Zap } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, X, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
 
 interface UploadZoneProps {
@@ -35,14 +33,14 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onAnalyze, isAnalyzing }
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
     ];
-    
+
     if (!validTypes.includes(file.type) && !file.name.endsWith('.pdf') && !file.name.endsWith('.docx')) {
-      setError('Please upload a valid PDF or DOCX resume file.');
+      setError('Please upload a PDF or DOCX file.');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('File size exceeds maximum limit of 10MB.');
+      setError('File size must be under 10MB.');
       return;
     }
 
@@ -71,117 +69,109 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onAnalyze, isAnalyzing }
     }
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  };
+
   return (
-    <Card className="p-6 md:p-10 border border-white/10 bg-gray-900/60 backdrop-blur-2xl rounded-3xl shadow-2xl relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-
-      <div className="text-center max-w-xl mx-auto mb-8">
-        <Badge variant="cyan" className="mb-3">
-          <Zap className="w-3 h-3 mr-1.5" /> Instant AI Parsing
-        </Badge>
-        <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-          Upload Your Resume
-        </h3>
-        <p className="text-sm text-gray-400 mt-2">
-          Drop your PDF or DOCX resume to extract instant ATS scoring, keyword match analysis, and recommendations.
-        </p>
-      </div>
-
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={cn(
-          'border-2 border-dashed rounded-2xl p-8 md:p-12 text-center cursor-pointer transition-all duration-300 relative group',
-          dragActive
-            ? 'border-cyan-400 bg-cyan-500/10 scale-[1.01]'
-            : selectedFile
-            ? 'border-emerald-500/50 bg-emerald-500/5'
-            : 'border-white/15 hover:border-cyan-500/50 hover:bg-white/5'
-        )}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.docx,.doc"
-          onChange={handleChange}
-          className="hidden"
-        />
-
+    <div className="w-full">
+      <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-[14px] shadow-token p-8 md:p-10 mx-auto max-w-2xl">
         {selectedFile ? (
-          <div className="flex flex-col items-center justify-center gap-3">
-            <div className="h-16 w-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/10 animate-in zoom-in-95 duration-200">
-              <FileText className="w-8 h-8" />
+          /* Selected File State */
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4 p-4 bg-[#F7F8FA] border border-[#E5E7EB] rounded-[10px]">
+              <div className="w-10 h-10 rounded-[8px] bg-[#059669]/10 border border-[#059669]/30 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-[#059669]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-[#1A1A1A] truncate">{selectedFile.name}</p>
+                <p className="text-xs text-[#6B7280] mt-0.5">{formatFileSize(selectedFile.size)}</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#059669] bg-[#059669]/10 border border-[#059669]/30 rounded-[8px] px-2.5 py-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Validated
+              </div>
+              <button
+                onClick={() => setSelectedFile(null)}
+                disabled={isAnalyzing}
+                className="p-1.5 text-[#6B7280] hover:text-[#1A1A1A] rounded-[8px] hover:bg-[#E5E7EB]/50 transition-colors disabled:opacity-50 cursor-pointer"
+                aria-label="Remove file"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div>
-              <p className="text-base font-semibold text-white">{selectedFile.name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • Ready for Analysis
-              </p>
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant="cyan" className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
-                <CheckCircle2 className="w-3 h-3 mr-1" /> Validated Format
-              </Badge>
-            </div>
+
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleStartAnalysis}
+              disabled={isAnalyzing}
+              isLoading={isAnalyzing}
+              className="w-full justify-center text-base"
+            >
+              Analyze Resume
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-cyan-500/10">
-              <UploadCloud className="w-8 h-8" />
-            </div>
-            <div>
-              <p className="text-base font-semibold text-white">
-                Drag & Drop your resume here, or <span className="text-cyan-400 underline">browse</span>
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                Supports PDF & DOCX formats up to 10MB
-              </p>
+          /* Dropzone */
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(
+              'border-2 border-dashed rounded-[12px] p-10 text-center cursor-pointer transition-all duration-150',
+              dragActive
+                ? 'border-[#059669] bg-[#059669]/10'
+                : 'border-[#E5E7EB] hover:border-[#059669] hover:bg-[#F7F8FA]'
+            )}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.doc"
+              onChange={handleChange}
+              className="hidden"
+            />
+
+            <div className="flex flex-col items-center gap-4">
+              <div className={cn(
+                'w-12 h-12 rounded-[10px] flex items-center justify-center transition-colors',
+                dragActive ? 'bg-[#059669]/20 text-[#059669]' : 'bg-[#F7F8FA] border border-[#E5E7EB] text-[#6B7280]'
+              )}>
+                <Upload className="w-6 h-6" />
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-[#1A1A1A]">
+                  Drag and drop your resume, or{' '}
+                  <span className="text-[#059669] hover:text-[#047857] underline underline-offset-2">
+                    browse files
+                  </span>
+                </p>
+                <p className="text-xs text-[#6B7280] mt-1">PDF or DOCX, up to 10MB</p>
+              </div>
             </div>
           </div>
         )}
-      </div>
 
-      {error && (
-        <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+        {/* Error */}
+        {error && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-[10px] px-3.5 py-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <span>{error}</span>
+          </div>
+        )}
 
-      <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 pt-6">
-        <div className="text-xs text-gray-400 flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Privacy Guaranteed: Files are processed securely in memory</span>
-        </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {selectedFile && (
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => setSelectedFile(null)}
-              disabled={isAnalyzing}
-              className="w-full sm:w-auto"
-            >
-              <RefreshCw className="w-4 h-4 mr-1.5" /> Reset
-            </Button>
-          )}
-          <Button
-            variant="primary"
-            size="md"
-            onClick={handleStartAnalysis}
-            disabled={!selectedFile || isAnalyzing}
-            isLoading={isAnalyzing}
-            className="w-full sm:w-auto px-8"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {isAnalyzing ? 'Analyzing Resume...' : 'Analyze Resume IQ'}
-          </Button>
+        {/* Privacy Note */}
+        <div className="mt-5 flex items-center justify-center gap-2 text-xs text-[#6B7280]">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#059669]" />
+          <span>Your resume is analyzed privately in-memory and never stored</span>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };

@@ -1,5 +1,12 @@
-/**
- * Dashboard Feature Module Placeholder (Phase 2+)
- * User analytics, score trends, saved resume versions, and insights dashboard.
- */
-export const DASHBOARD_FEATURE_VERSION = '1.0.0-foundation';
+export * from '@/components/dashboard/AnalysisDashboard';
+export * from '@/components/dashboard/OverallScore';
+export * from '@/components/dashboard/SectionScores';
+export * from '@/components/dashboard/Strengths';
+export * from '@/components/dashboard/Weaknesses';
+export * from '@/components/dashboard/Recommendations';
+export * from '@/components/dashboard/KeywordAnalysis';
+export * from '@/components/dashboard/SummaryComparison';
+export * from '@/components/dashboard/BulletImprovements';
+export * from '@/components/dashboard/AIInsights';
+export * from '@/components/dashboard/JDMatcher';
+

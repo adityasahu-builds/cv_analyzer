@@ -1,11 +1,9 @@
 import { NavItem, FooterGroup } from '@/types';
 
 export const MAIN_NAV_ITEMS: NavItem[] = [
-  { label: 'Features', href: '#features' },
-  { label: 'ATS Score', href: '#ats-analyzer', badge: 'v1.0' },
-  { label: 'JD Matcher', href: '#jd-matcher' },
-  { label: 'Target Roles', href: '#target-users' },
-  { label: 'Docs', href: '#docs', external: true },
+  { label: 'Product',      href: '#features' },
+  { label: 'Features',     href: '#features' },
+  { label: 'How it works', href: '#how-it-works' },
 ];
 
 export const FOOTER_NAV_GROUPS: FooterGroup[] = [
