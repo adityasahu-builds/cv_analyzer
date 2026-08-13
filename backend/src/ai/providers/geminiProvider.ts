@@ -161,7 +161,8 @@ export async function analyzeWithGemini(
 export async function matchWithGemini(
   resumeData: ParsedResumeData,
   jobDescription: string,
-  correlationId: string = 'local'
+  correlationId: string = 'local',
+  isShortTitle: boolean = false
 ): Promise<JobMatchResponse> {
   const config = getAIConfig();
   if (!config.geminiApiKey) {
@@ -170,8 +171,9 @@ export async function matchWithGemini(
   }
 
   const model = config.geminiModel || 'gemini-3.6-flash';
-  const prompt = buildJobMatchPrompt(resumeData, jobDescription);
+  const prompt = buildJobMatchPrompt(resumeData, jobDescription, isShortTitle);
   const parts = [{ text: prompt }];
+
 
   const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.geminiApiKey}`;
 

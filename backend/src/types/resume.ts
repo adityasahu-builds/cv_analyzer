@@ -168,7 +168,9 @@ export interface JobMatchResult {
   missingSkills: string[];
   experienceAlignment: string;
   summary: string;
+  isLimitedAnalysis?: boolean;
 }
+
 
 export interface JobMatchApiResponse {
   success: boolean;

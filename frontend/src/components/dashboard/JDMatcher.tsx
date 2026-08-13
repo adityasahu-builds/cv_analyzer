@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ParsedResumeData, JobMatchResult } from '@/types/resume';
 
@@ -23,23 +23,28 @@ export const JDMatcher: React.FC<JDMatcherProps> = ({ resumeData }) => {
     setError(null);
     setMatchResult(null);
 
-    // 1. Validation
-    if (trimmed.length < 20) {
-      setError('Please enter a valid job description with enough role information to analyze.');
+    // 1. Client Validation
+    if (trimmed.length < 2) {
+      setError('Please enter a valid job description or role title to analyze.');
       return;
     }
-    const words = trimmed.split(/\s+/).filter((w) => w.length > 1);
-    if (words.length < 5) {
+
+    const alphabeticChars = trimmed.replace(/[^a-zA-Z]/g, '');
+    if (alphabeticChars.length < 2) {
       setError('Please enter a valid job description with enough role information to analyze.');
       return;
     }
 
-    const hasExtremelyLongWord = words.some(
-      (w) => w.length > 25 && !w.startsWith('http') && !w.includes('/') && !w.includes('.') && !w.includes('-')
-    );
-    const vowelMatch = trimmed.match(/[aeiouyAEIOUY]/g);
-    const vowelRatio = vowelMatch ? vowelMatch.length / trimmed.length : 0;
-    if (hasExtremelyLongWord || (vowelRatio < 0.1 && trimmed.length > 30)) {
+    const longConsonantsRegex = /[bcdfghjklmnpqrstvwxz]{6,}/i;
+    const words = trimmed.split(/\s+/).filter((w) => w.length > 0);
+    const vowelsCount = (trimmed.match(/[aeiouyAEIOUY]/g) || []).length;
+    const vowelRatio = vowelsCount / alphabeticChars.length;
+    const isAcronym = words.length === 1 && words[0].length <= 5 && /^[a-zA-Z]+$/.test(words[0]);
+
+    const lowerText = trimmed.toLowerCase();
+    const isKeyboardSweep = lowerText.includes('asdfgh') || lowerText.includes('zxcvbn') || lowerText.includes('qwertyui');
+
+    if (longConsonantsRegex.test(trimmed) || (vowelRatio < 0.15 && !isAcronym) || isKeyboardSweep) {
       setError('Please enter a valid job description with enough role information to analyze.');
       return;
     }
@@ -136,8 +141,17 @@ export const JDMatcher: React.FC<JDMatcherProps> = ({ resumeData }) => {
       {/* Results */}
       {matchResult && (
         <div className="border border-[#E5E7EB] bg-[#F7F8FA] rounded-[10px] overflow-hidden animate-in fade-in duration-200">
+          {/* Info Banner for Limited Role Analysis */}
+          {matchResult.isLimitedAnalysis && (
+            <div className="flex items-center gap-2 px-5 py-3 bg-blue-50 border-b border-blue-100 text-xs text-blue-800 font-medium">
+              <Info className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>Role title detected. Add the full job description for deeper skill and experience matching.</span>
+            </div>
+          )}
+
           {/* Score header */}
           <div className="flex flex-col gap-3 px-5 py-4 border-b border-[#E5E7EB]">
+
             <div className="flex items-center gap-5">
               <div className="text-center shrink-0">
                 <div className={`text-4xl font-black ${scoreColor}`}>{matchResult.matchScore}%</div>

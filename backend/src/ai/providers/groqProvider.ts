@@ -181,7 +181,8 @@ export async function analyzeWithGroq(
 export async function matchWithGroq(
   resumeData: ParsedResumeData,
   jobDescription: string,
-  correlationId: string = 'local'
+  correlationId: string = 'local',
+  isShortTitle: boolean = false
 ): Promise<JobMatchResponse> {
   const config = getAIConfig();
   if (!config.groqApiKey) {
@@ -190,7 +191,8 @@ export async function matchWithGroq(
   }
 
   const model = config.groqModel || 'llama-3.3-70b-versatile';
-  const prompt = buildJobMatchPrompt(resumeData, jobDescription);
+  const prompt = buildJobMatchPrompt(resumeData, jobDescription, isShortTitle);
+
 
   console.log(`[GroqProvider] [${correlationId}] Sending match request to Groq model '${model}'...`);
   const groq = new Groq({ apiKey: config.groqApiKey });

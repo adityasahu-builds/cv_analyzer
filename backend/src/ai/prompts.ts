@@ -167,7 +167,7 @@ ${jdText ? `TARGET JOB DESCRIPTION:\n${jdText}\n\n` : ''}RESUME TEXT:
 ${normalizedText}`;
 }
 
-export function buildJobMatchPrompt(resumeData: ParsedResumeData, jobDescription: string): string {
+export function buildJobMatchPrompt(resumeData: ParsedResumeData, jobDescription: string, isShortTitle: boolean = false): string {
   let cleanText = resumeData.rawText ? resumeData.rawText.trim() : '';
 
   if (!cleanText) {
@@ -188,6 +188,37 @@ export function buildJobMatchPrompt(resumeData: ParsedResumeData, jobDescription
 
   const resumeText = smartTruncateResumeText(cleanText, 9000);
   const jdText = smartTruncateResumeText(jobDescription, 3000);
+
+  if (isShortTitle) {
+    return `The user provided only a Job Title (or short role description) instead of a full job posting.
+
+RESUME TEXT:
+---
+${resumeText}
+---
+
+TARGET ROLE TITLE:
+"${jdText}"
+
+Instructions:
+1. Identify the target role title cleanly (e.g., "Software Engineer", "Python Developer").
+2. Do NOT invent or fabricate any job description requirements, missing skills, or technologies that were not explicitly mentioned in the target role title.
+3. If the role title explicitly mentions a specific technology (e.g. "Python Developer"), list that technology in "extractedSkills". Otherwise, return an empty array [] for "extractedSkills".
+4. Evaluate role title alignment score (0 to 100) based on how well the candidate's background matches this target role.
+5. Evaluate experience alignment score (0 to 100) based on candidate's experience relevance to this role title.
+6. Provide a concise 1-2 sentence "experienceAlignment" note.
+7. Provide a "summary" stating: "Limited analysis — only the job title was provided. Add the full job description for a more accurate skills and experience match."
+
+Return ONLY a valid JSON object matching this schema:
+{
+  "roleTitle": "string or null",
+  "extractedSkills": ["string"],
+  "experienceAlignmentScore": number,
+  "roleAlignmentScore": number,
+  "experienceAlignment": "string",
+  "summary": "string"
+}`;
+  }
 
   return `Compare this candidate's Resume with the Target Job Description and extract matching details.
   
@@ -221,4 +252,5 @@ Return ONLY a valid JSON object matching this schema:
 
 IMPORTANT: Do not return markdown block backticks. Return raw JSON. Do not invent skills that are not mentioned in the job description.`;
 }
+
 

@@ -15,8 +15,10 @@ export const JobMatchResultSchema = z.object({
   matchedSkills: z.array(z.string()),
   missingSkills: z.array(z.string()),
   experienceAlignment: z.string(),
-  summary: z.string()
+  summary: z.string(),
+  isLimitedAnalysis: z.boolean().optional().default(false),
 });
 
 export type JobMatchResponse = z.infer<typeof JobMatchResponseSchema>;
 export type JobMatchResult = z.infer<typeof JobMatchResultSchema>;
+

@@ -89,5 +89,7 @@ export interface JobMatchResult {
   missingSkills: string[];
   experienceAlignment: string;
   summary: string;
+  isLimitedAnalysis?: boolean;
 }
+
 
