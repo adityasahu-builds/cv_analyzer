@@ -80,61 +80,6 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/match', async (req: Request, res: Response) => {
-  const startTime = Date.now();
-  const correlationId = (req.headers['x-correlation-id'] as string) || `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-  try {
-    const { resumeData, jobDescription } = req.body;
-
-    // 1. Validate Resume Data Structure
-    const parseResult = ParsedResumeSchema.safeParse(resumeData);
-    if (!parseResult.success) {
-      console.warn(`[API /api/analyze/match] [${correlationId}] Zod validation error on resume data:`, parseResult.error.format());
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid parsed resume payload structure provided.',
-        category: 'SCHEMA_VALIDATION_ERROR',
-        correlationId,
-        durationMs: Date.now() - startTime,
-      });
-    }
-
-    // 2. Validate Job Description
-    if (typeof jobDescription !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'Job description must be a string.',
-        category: 'INPUT_VALIDATION_ERROR',
-        correlationId,
-        durationMs: Date.now() - startTime,
-      });
-    }
-
-    const matchResult = await aiOrchestrator.matchJobDescription(parseResult.data, jobDescription, correlationId);
-    const durationMs = Date.now() - startTime;
-
-    return res.status(200).json({
-      success: true,
-      data: matchResult,
-      correlationId,
-      durationMs
-    });
-  } catch (error) {
-    const durationMs = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown job matching error';
-
-    console.error(`[API /api/analyze/match] [${correlationId}] Match failed after ${durationMs}ms:`, errorMessage);
-
-    return res.status(400).json({
-      success: false,
-      error: errorMessage,
-      category: 'JOB_MATCH_ERROR',
-      correlationId,
-      durationMs
-    });
-  }
-});
-
 export default router;
+
 

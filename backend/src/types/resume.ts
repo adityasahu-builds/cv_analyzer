@@ -161,23 +161,4 @@ export interface AnalyzeApiResponse {
   durationMs?: number;
 }
 
-export interface JobMatchResult {
-  matchScore: number;
-  roleTitle: string | null;
-  matchedSkills: string[];
-  missingSkills: string[];
-  experienceAlignment: string;
-  summary: string;
-  isLimitedAnalysis?: boolean;
-}
-
-
-export interface JobMatchApiResponse {
-  success: boolean;
-  data?: JobMatchResult;
-  error?: string;
-  category?: string;
-  correlationId?: string;
-  durationMs?: number;
-}
 

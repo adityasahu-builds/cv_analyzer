@@ -18,7 +18,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { ResumeAnalysisReport, ParsedResumeData } from '@/types/resume';
+import { ResumeAnalysisReport } from '@/types/resume';
+
 
 import { OverallScore } from './OverallScore';
 import { SectionScores } from './SectionScores';
@@ -29,11 +30,10 @@ import { KeywordAnalysis } from './KeywordAnalysis';
 import { SummaryComparison } from './SummaryComparison';
 import { BulletImprovements } from './BulletImprovements';
 import { AIInsights } from './AIInsights';
-import { JDMatcher } from './JDMatcher';
+
 
 export interface AnalysisDashboardProps {
   report: ResumeAnalysisReport;
-  resumeData?: ParsedResumeData;
   filename: string;
   requestId: string;
   provider: string;
@@ -48,7 +48,6 @@ type TabType =
   | 'strengths'
   | 'recommendations'
   | 'keywords'
-  | 'matcher'
   | 'summary'
   | 'bullets'
   | 'insights';
@@ -60,7 +59,6 @@ const NAV_ITEMS: { id: TabType; label: string; icon: React.ReactNode }[] = [
   { id: 'strengths',       label: 'Strengths',        icon: <ShieldCheck className="w-4 h-4" /> },
   { id: 'recommendations', label: 'Improvements',     icon: <ChevronRight className="w-4 h-4" /> },
   { id: 'keywords',        label: 'Keywords',         icon: <Tag className="w-4 h-4" /> },
-  { id: 'matcher',         label: 'Job Match',        icon: <Target className="w-4 h-4" /> },
   { id: 'summary',         label: 'Summary',          icon: <FileText className="w-4 h-4" /> },
   { id: 'bullets',         label: 'Bullet Rewrites',  icon: <Sparkles className="w-4 h-4" /> },
   { id: 'insights',        label: 'AI Insights',      icon: <Cpu className="w-4 h-4" /> },
@@ -68,7 +66,6 @@ const NAV_ITEMS: { id: TabType; label: string; icon: React.ReactNode }[] = [
 
 export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   report,
-  resumeData,
   filename,
   requestId,
   provider,
@@ -223,10 +220,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
           {(activeTab === 'overview' || activeTab === 'keywords') && (
             <KeywordAnalysis missingKeywords={report.missingKeywords || []} />
-          )}
-
-          {(activeTab === 'overview' || activeTab === 'matcher') && (
-            <JDMatcher resumeData={resumeData} missingKeywords={report.missingKeywords} />
           )}
 
           {(activeTab === 'overview' || activeTab === 'summary') && (

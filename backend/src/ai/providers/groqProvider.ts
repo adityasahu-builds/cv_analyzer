@@ -1,10 +1,10 @@
 import Groq from 'groq-sdk';
 import { ParsedResumeData, ResumeAnalysisReport } from '../../types/resume';
 import { getAIConfig, maskApiKey } from '../config';
-import { buildCompactGroqPrompt, buildJobMatchPrompt } from '../prompts';
+import { buildCompactGroqPrompt } from '../prompts';
 import { ResumeAnalysisReportSchema } from '../schemas/resumeAnalysisSchema';
 import { cleanJsonText } from './geminiProvider';
-import { JobMatchResponse, JobMatchResponseSchema } from '../schemas/jobMatchSchema';
+
 import { hasUsableResumeText } from '../../parser/extractors/pdfExtractor';
 
 export class GroqVisualPdfUnsupportedError extends Error {
@@ -178,51 +178,4 @@ export async function analyzeWithGroq(
   };
 }
 
-export async function matchWithGroq(
-  resumeData: ParsedResumeData,
-  jobDescription: string,
-  correlationId: string = 'local',
-  isShortTitle: boolean = false
-): Promise<JobMatchResponse> {
-  const config = getAIConfig();
-  if (!config.groqApiKey) {
-    console.error(`[GroqProvider] [${correlationId}] GROQ_API_KEY is missing in server environment.`);
-    throw new Error('GROQ_API_KEY is missing in server environment variables.');
-  }
-
-  const model = config.groqModel || 'llama-3.3-70b-versatile';
-  const prompt = buildJobMatchPrompt(resumeData, jobDescription, isShortTitle);
-
-
-  console.log(`[GroqProvider] [${correlationId}] Sending match request to Groq model '${model}'...`);
-  const groq = new Groq({ apiKey: config.groqApiKey });
-
-  const messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
-    {
-      role: 'system',
-      content: 'You are an expert ATS matching engine. Return ONLY valid JSON matching the schema.',
-    },
-    {
-      role: 'user',
-      content: prompt,
-    },
-  ];
-
-  const completion = await groq.chat.completions.create({
-    messages,
-    model,
-    temperature: 0.0,
-    max_tokens: 2048,
-    response_format: { type: 'json_object' },
-  });
-
-  const rawTextOutput = completion.choices[0]?.message?.content || '';
-  if (!rawTextOutput || rawTextOutput.trim().length === 0) {
-    throw new Error('Groq match API returned an empty completion response.');
-  }
-
-  const cleanedJson = cleanJsonText(rawTextOutput);
-  const parsedObject = JSON.parse(cleanedJson);
-  return JobMatchResponseSchema.parse(parsedObject);
-}
 

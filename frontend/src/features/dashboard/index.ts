@@ -8,5 +8,5 @@ export * from '@/components/dashboard/KeywordAnalysis';
 export * from '@/components/dashboard/SummaryComparison';
 export * from '@/components/dashboard/BulletImprovements';
 export * from '@/components/dashboard/AIInsights';
-export * from '@/components/dashboard/JDMatcher';
+
 
