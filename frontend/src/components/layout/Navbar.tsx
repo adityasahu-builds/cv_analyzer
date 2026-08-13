@@ -64,12 +64,6 @@ export const Navbar: React.FC = () => {
           <div className="hidden md:flex items-center gap-2">
             <button
               onClick={() => scrollTo('ats-analyzer')}
-              className="px-3.5 py-2 text-[14px] text-[#6B7280] hover:text-[#1A1A1A] font-medium transition-colors rounded-[8px] hover:bg-[#F7F8FA]"
-            >
-              Sign in
-            </button>
-            <button
-              onClick={() => scrollTo('ats-analyzer')}
               className="px-4 py-2 text-[14px] font-semibold text-white bg-[#059669] hover:bg-[#047857] active:bg-[#047857] rounded-[10px] transition-colors duration-150 shadow-sm cursor-pointer"
             >
               Analyze Resume
