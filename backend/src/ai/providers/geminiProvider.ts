@@ -1,7 +1,8 @@
 import { ParsedResumeData, ResumeAnalysisReport } from '../../types/resume';
 import { getAIConfig, maskApiKey } from '../config';
-import { buildResumeAnalysisPrompt } from '../prompts';
+import { buildResumeAnalysisPrompt, buildJobMatchPrompt } from '../prompts';
 import { ResumeAnalysisReportSchema } from '../schemas/resumeAnalysisSchema';
+import { JobMatchResponse, JobMatchResponseSchema } from '../schemas/jobMatchSchema';
 
 export function cleanJsonText(rawText: string): string {
   let cleaned = rawText.trim();
@@ -156,3 +157,50 @@ export async function analyzeWithGemini(
     },
   };
 }
+
+export async function matchWithGemini(
+  resumeData: ParsedResumeData,
+  jobDescription: string,
+  correlationId: string = 'local'
+): Promise<JobMatchResponse> {
+  const config = getAIConfig();
+  if (!config.geminiApiKey) {
+    console.error(`[GeminiProvider] [${correlationId}] GEMINI_API_KEY is missing in server environment.`);
+    throw new Error('GEMINI_API_KEY is missing in server environment variables.');
+  }
+
+  const model = config.geminiModel || 'gemini-3.6-flash';
+  const prompt = buildJobMatchPrompt(resumeData, jobDescription);
+  const parts = [{ text: prompt }];
+
+  const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.geminiApiKey}`;
+
+  console.log(`[GeminiProvider] [${correlationId}] Sending match request to Gemini model '${model}'...`);
+  const response = await fetch(requestUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.0,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'No error body');
+    throw new Error(`Gemini match request failed: HTTP ${response.status} - ${errorText}`);
+  }
+
+  const jsonResult = await response.json();
+  const rawTextOutput = jsonResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!rawTextOutput) {
+    throw new Error('Gemini match API returned an empty response.');
+  }
+
+  const cleanedJson = cleanJsonText(rawTextOutput);
+  const parsedObject = JSON.parse(cleanedJson);
+  return JobMatchResponseSchema.parse(parsedObject);
+}
+

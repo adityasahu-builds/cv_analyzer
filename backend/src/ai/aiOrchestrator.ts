@@ -1,10 +1,11 @@
-import { ParsedResumeData, ResumeAnalysisReport } from '../types/resume';
+import { ParsedResumeData, ResumeAnalysisReport, JobMatchResult } from '../types/resume';
 import { getAIConfig } from './config';
-import { analyzeWithGemini } from './providers/geminiProvider';
-import { analyzeWithGroq, GroqVisualPdfUnsupportedError } from './providers/groqProvider';
+import { analyzeWithGemini, matchWithGemini } from './providers/geminiProvider';
+import { analyzeWithGroq, GroqVisualPdfUnsupportedError, matchWithGroq } from './providers/groqProvider';
 import { normalizeParsedResumeData, computeResumeHash, computeJobDescriptionHash } from '../services/normalizer';
 import { applyDeterministicScoring, SCORING_VERSION } from '../services/deterministicScorer';
 import { analysisCache } from '../services/analysisCache';
+import { JobMatchResponse } from './schemas/jobMatchSchema';
 
 export class AIOrchestrationError extends Error {
   primaryProvider: string;
@@ -220,6 +221,204 @@ export class AIOrchestrator {
       primaryErrorMsg
     );
   }
+
+  private matchCache = new Map<string, JobMatchResult>();
+
+  async matchJobDescription(
+    resumeData: ParsedResumeData,
+    jobDescription: string,
+    correlationId: string = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+  ): Promise<JobMatchResult> {
+    // 1. Validation
+    const validation = validateJobDescription(jobDescription);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    const normalizedResume = normalizeParsedResumeData(resumeData);
+    const resumeHash = computeResumeHash(normalizedResume);
+    const jobDescriptionHash = computeJobDescriptionHash(jobDescription);
+
+    const config = getAIConfig();
+    const primaryName = config.primaryProvider.toLowerCase();
+    
+    // 2. Cache Check
+    const cacheKey = `${resumeHash}_${jobDescriptionHash}_${SCORING_VERSION}_${primaryName}`;
+    const cachedResult = this.matchCache.get(cacheKey);
+    if (cachedResult) {
+      console.log(`[AIOrchestrator] [${correlationId}] Returned CACHED job match result for resumeHash=${resumeHash.slice(0, 8)}`);
+      return cachedResult;
+    }
+
+    console.log(`[AIOrchestrator] [${correlationId}] Running live job match analysis.`);
+    
+    // 3. AI Execution with Fallback
+    let aiResponse: JobMatchResponse;
+    let primaryErrorMsg = '';
+    const fallbackName = config.fallbackProvider.toLowerCase();
+
+    try {
+      if (primaryName === 'gemini') {
+        aiResponse = await matchWithGemini(normalizedResume, jobDescription, correlationId);
+      } else if (primaryName === 'groq') {
+        aiResponse = await matchWithGroq(normalizedResume, jobDescription, correlationId);
+      } else {
+        throw new Error(`Unsupported primary provider: '${config.primaryProvider}'`);
+      }
+    } catch (primaryErr) {
+      primaryErrorMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+      console.warn(`[AIOrchestrator] Primary match provider failed: ${primaryErrorMsg}`);
+
+      if (fallbackName && fallbackName !== primaryName) {
+        try {
+          console.log(`[AIOrchestrator] Attempting Fallback match provider: ${config.fallbackProvider}`);
+          if (fallbackName === 'groq') {
+            aiResponse = await matchWithGroq(normalizedResume, jobDescription, correlationId);
+          } else if (fallbackName === 'gemini') {
+            aiResponse = await matchWithGemini(normalizedResume, jobDescription, correlationId);
+          } else {
+            throw new Error(`Unsupported fallback provider: '${config.fallbackProvider}'`);
+          }
+        } catch (fallbackErr) {
+          console.error(`[AIOrchestrator] Fallback match provider failed: ${fallbackErr}`);
+          throw new Error(`AI Job Match failed. Primary: ${primaryErrorMsg} | Fallback: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`);
+        }
+      } else {
+        throw new Error(`AI Job Match failed: ${primaryErrorMsg}`);
+      }
+    }
+
+    // 4. Deterministic Scoring & Verification
+    const resumeKeywords = extractAllResumeKeywords(normalizedResume);
+    const resumeRawText = normalizedResume.rawText || '';
+
+    const matchedSkills: string[] = [];
+    const missingSkills: string[] = [];
+
+    // Verify each AI-extracted skill against the resume
+    (aiResponse.extractedSkills || []).forEach(skill => {
+      const cleanSkill = skill.trim();
+      if (!cleanSkill) return;
+      
+      if (isSkillInResume(cleanSkill, resumeKeywords, resumeRawText)) {
+        matchedSkills.push(cleanSkill);
+      } else {
+        missingSkills.push(cleanSkill);
+      }
+    });
+
+    // Ensure we don't have empty skill list
+    const totalSkills = matchedSkills.length + missingSkills.length;
+    const skillScore = totalSkills > 0 ? (matchedSkills.length / totalSkills) * 100 : 70;
+
+    // Weighting: 50% Skill Match, 30% Experience Alignment, 20% Role Alignment
+    const finalScore = Math.min(100, Math.max(0, Math.round(
+      skillScore * 0.5 + 
+      (aiResponse.experienceAlignmentScore || 70) * 0.3 + 
+      (aiResponse.roleAlignmentScore || 70) * 0.2
+    )));
+
+    const result: JobMatchResult = {
+      matchScore: finalScore,
+      roleTitle: aiResponse.roleTitle,
+      matchedSkills,
+      missingSkills,
+      experienceAlignment: aiResponse.experienceAlignment,
+      summary: aiResponse.summary
+    };
+
+    // Store in cache
+    this.matchCache.set(cacheKey, result);
+    return result;
+  }
+}
+
+export function validateJobDescription(jd: string): { isValid: boolean; error?: string } {
+  const trimmed = (jd || '').trim();
+  if (trimmed.length < 20) {
+    return {
+      isValid: false,
+      error: 'Please enter a valid job description with enough role information to analyze.'
+    };
+  }
+
+  const words = trimmed.split(/\s+/).filter(w => w.length > 1);
+  if (words.length < 5) {
+    return {
+      isValid: false,
+      error: 'Please enter a valid job description with enough role information to analyze.'
+    };
+  }
+
+  const hasExtremelyLongWord = words.some(w => w.length > 25 && !w.startsWith('http') && !w.includes('/') && !w.includes('.') && !w.includes('-'));
+  if (hasExtremelyLongWord) {
+    return {
+      isValid: false,
+      error: 'Please enter a valid job description with enough role information to analyze.'
+    };
+  }
+
+  const vowelMatch = trimmed.match(/[aeiouyAEIOUY]/g);
+  const vowelRatio = vowelMatch ? vowelMatch.length / trimmed.length : 0;
+  if (vowelRatio < 0.1 && trimmed.length > 30) {
+    return {
+      isValid: false,
+      error: 'Please enter a valid job description with enough role information to analyze.'
+    };
+  }
+
+  return { isValid: true };
+}
+
+function extractAllResumeKeywords(resumeData: ParsedResumeData): Set<string> {
+  const keywords = new Set<string>();
+  
+  if (resumeData.personal?.fullName) {
+    keywords.add(resumeData.personal.fullName.toLowerCase().trim());
+  }
+
+  (resumeData.skills || []).forEach(sc => {
+    (sc.items || []).forEach(item => {
+      keywords.add(item.toLowerCase().trim());
+    });
+  });
+
+  (resumeData.experience || []).forEach(exp => {
+    if (exp.position) keywords.add(exp.position.toLowerCase().trim());
+    (exp.bulletPoints || []).forEach(bp => {
+      const words = bp.toLowerCase().split(/[^a-zA-Z0-9+#.-]/).filter(Boolean);
+      words.forEach(w => keywords.add(w));
+    });
+  });
+
+  (resumeData.projects || []).forEach(proj => {
+    if (proj.title) keywords.add(proj.title.toLowerCase().trim());
+    (proj.technologies || []).forEach(tech => {
+      keywords.add(tech.toLowerCase().trim());
+    });
+    if (proj.description) {
+      proj.description.toLowerCase().split(/[^a-zA-Z0-9+#.-]/).filter(Boolean).forEach(w => keywords.add(w));
+    }
+  });
+
+  if (resumeData.summary) {
+    resumeData.summary.toLowerCase().split(/[^a-zA-Z0-9+#.-]/).filter(Boolean).forEach(w => keywords.add(w));
+  }
+
+  return keywords;
+}
+
+function isSkillInResume(skill: string, resumeKeywords: Set<string>, resumeRawText: string): boolean {
+  const normSkill = skill.toLowerCase().trim();
+  if (resumeKeywords.has(normSkill)) return true;
+  
+  const rawText = resumeRawText.toLowerCase();
+  if (rawText.includes(normSkill)) return true;
+
+  const escapedSkill = normSkill.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const regex = new RegExp(`\\b${escapedSkill}\\b`, 'i');
+  return regex.test(rawText);
 }
 
 export const aiOrchestrator = new AIOrchestrator();
+

@@ -7,7 +7,8 @@ import { HeroSection } from '@/components/sections/HeroSection';
 import { UploadZone } from '@/components/sections/UploadZone';
 import { AnalysisLoading } from '@/components/sections/AnalysisLoading';
 import { AnalysisDashboard } from '@/components/dashboard/AnalysisDashboard';
-import { ResumeAnalysisReport } from '@/types/resume';
+import { ResumeAnalysisReport, ParsedResumeData } from '@/types/resume';
+
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
 
@@ -89,6 +90,8 @@ export default function Home() {
     provider: string;
   } | null>(null);
   const [analysisError, setAnalysisError]     = useState<string | null>(null);
+  const [parsedResumeData, setParsedResumeData] = useState<ParsedResumeData | null>(null);
+
   const pendingResultRef = React.useRef<{
     report: ResumeAnalysisReport;
     filename: string;
@@ -128,8 +131,10 @@ export default function Home() {
         throw new Error(parseResult.error || 'Failed to parse resume document.');
       }
 
+      setParsedResumeData(parseResult.data);
       setAnalysisPhase('parsed');
       setAnalysisPhase('analyzing');
+
 
       const analyzeResponse = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: 'POST',
@@ -171,11 +176,13 @@ export default function Home() {
   const handleReset = () => {
     setAnalysisResult(null);
     setAnalysisError(null);
+    setParsedResumeData(null);
     setIsAnalyzing(false);
     setIsApiFinished(false);
     setCurrentFile(null);
     document.getElementById('ats-analyzer')?.scrollIntoView({ behavior: 'smooth' });
   };
+
 
   const handleReAnalyze = () => { if (currentFile) handleAnalyze(currentFile); };
 
@@ -277,6 +284,7 @@ export default function Home() {
             <div className="mt-10">
               <AnalysisDashboard
                 report={analysisResult.report}
+                resumeData={parsedResumeData || undefined}
                 filename={analysisResult.filename}
                 requestId={analysisResult.requestId}
                 provider={analysisResult.provider}

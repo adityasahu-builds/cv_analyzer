@@ -166,3 +166,59 @@ export function buildCompactGroqPrompt(resumeData: ParsedResumeData, jobDescript
 ${jdText ? `TARGET JOB DESCRIPTION:\n${jdText}\n\n` : ''}RESUME TEXT:
 ${normalizedText}`;
 }
+
+export function buildJobMatchPrompt(resumeData: ParsedResumeData, jobDescription: string): string {
+  let cleanText = resumeData.rawText ? resumeData.rawText.trim() : '';
+
+  if (!cleanText) {
+    const parts: string[] = [];
+    if (resumeData.personal?.fullName) parts.push(`Name: ${resumeData.personal.fullName}`);
+    if (resumeData.summary) parts.push(`Summary: ${resumeData.summary}`);
+    if (resumeData.skills?.length) {
+      parts.push(`Skills: ${resumeData.skills.map((s) => s.items.join(', ')).join('; ')}`);
+    }
+    if (resumeData.experience?.length) {
+      parts.push(`Experience: ${resumeData.experience.map((e) => `${e.position} at ${e.company}: ${e.bulletPoints.join(' ')}`).join('\n')}`);
+    }
+    if (resumeData.education?.length) {
+      parts.push(`Education: ${resumeData.education.map((ed) => `${ed.degree} from ${ed.institution}`).join('; ')}`);
+    }
+    cleanText = parts.join('\n\n');
+  }
+
+  const resumeText = smartTruncateResumeText(cleanText, 9000);
+  const jdText = smartTruncateResumeText(jobDescription, 3000);
+
+  return `Compare this candidate's Resume with the Target Job Description and extract matching details.
+  
+RESUME TEXT:
+---
+${resumeText}
+---
+
+TARGET JOB DESCRIPTION:
+---
+${jdText}
+---
+
+Evaluate the matching profile.
+1. Extract the target job title from the job description (e.g., "Senior React Developer", "Python Data Analyst"). If the job description does not have a recognizable role title, return null. Do not invent or fabricate a title.
+2. Extract the key technical skills, tools, and methodologies required in the Job Description (aim for 5-15 skills).
+3. Evaluate the experience alignment score (0 to 100) based on responsibilities, seniority level, and years of experience.
+4. Evaluate the role title alignment score (0 to 100) based on how previous job titles match the target role.
+5. Provide a 1-2 sentence "experienceAlignment" explanation.
+6. Provide a 2-3 sentence "summary" of the overall alignment between the resume and the job description.
+
+Return ONLY a valid JSON object matching this schema:
+{
+  "roleTitle": "string or null",
+  "extractedSkills": ["string"],
+  "experienceAlignmentScore": number,
+  "roleAlignmentScore": number,
+  "experienceAlignment": "string",
+  "summary": "string"
+}
+
+IMPORTANT: Do not return markdown block backticks. Return raw JSON. Do not invent skills that are not mentioned in the job description.`;
+}
+

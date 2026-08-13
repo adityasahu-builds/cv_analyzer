@@ -18,7 +18,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { ResumeAnalysisReport } from '@/types/resume';
+import { ResumeAnalysisReport, ParsedResumeData } from '@/types/resume';
 
 import { OverallScore } from './OverallScore';
 import { SectionScores } from './SectionScores';
@@ -33,6 +33,7 @@ import { JDMatcher } from './JDMatcher';
 
 export interface AnalysisDashboardProps {
   report: ResumeAnalysisReport;
+  resumeData?: ParsedResumeData;
   filename: string;
   requestId: string;
   provider: string;
@@ -67,6 +68,7 @@ const NAV_ITEMS: { id: TabType; label: string; icon: React.ReactNode }[] = [
 
 export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   report,
+  resumeData,
   filename,
   requestId,
   provider,
@@ -224,7 +226,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           )}
 
           {(activeTab === 'overview' || activeTab === 'matcher') && (
-            <JDMatcher missingKeywords={report.missingKeywords} />
+            <JDMatcher resumeData={resumeData} missingKeywords={report.missingKeywords} />
           )}
 
           {(activeTab === 'overview' || activeTab === 'summary') && (
