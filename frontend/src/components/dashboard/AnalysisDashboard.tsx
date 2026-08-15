@@ -5,8 +5,6 @@ import {
   FileText,
   RotateCcw,
   CheckCircle2,
-  Copy,
-  Check,
   Upload,
   BarChart3,
   Layers,
@@ -73,13 +71,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onReAnalyze,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [copiedReport, setCopiedReport] = useState(false);
-
-  const handleCopyJson = () => {
-    navigator.clipboard.writeText(JSON.stringify(report, null, 2));
-    setCopiedReport(true);
-    setTimeout(() => setCopiedReport(false), 2000);
-  };
 
   const scoreColor =
     report.overallScore >= 85
@@ -91,17 +82,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   return (
     <div id="ats-analyzer-results" className="w-full animate-in fade-in duration-300">
 
-      {/* DEV DIAGNOSTICS */}
-      {report.diagnostics && (
-        <div className="mb-3 px-4 py-2 bg-[#F7F8FA] border border-[#E5E7EB] rounded-[8px] text-[11px] font-mono text-[#6B7280] flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span className="font-bold text-[#059669]">DEV DEBUG:</span>
-          <span>ID: {(report.diagnostics.analysisId as string) || requestId}</span>
-          <span>ResumeHash: {((report.diagnostics.resumeHash as string) || '').substring(0, 10)}...</span>
-          <span>Engine: {(report.diagnostics.provider as string) || provider}</span>
-          <span>Scoring: {(report.diagnostics.scoringVersion as string) || 'v2.0-deterministic'}</span>
-          <span>Cache: {report.diagnostics.cached ? 'HIT (Cached Result)' : 'MISS (Live Analysis)'}</span>
-        </div>
-      )}
 
       {/* TOP HEADER CONTROLS */}
       <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-[14px] shadow-token mb-6 p-5">
@@ -128,13 +108,6 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <div className={`text-2xl font-extrabold ${scoreColor}`}>{report.overallScore}</div>
               <div className="text-[10px] text-[#6B7280] uppercase font-bold tracking-wider">ATS Score</div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleCopyJson}>
-              {copiedReport ? (
-                <><Check className="w-3.5 h-3.5 mr-1.5 text-[#059669]" /> Copied</>
-              ) : (
-                <><Copy className="w-3.5 h-3.5 mr-1.5" /> Copy JSON</>
-              )}
-            </Button>
             <Button variant="secondary" size="sm" onClick={onReAnalyze}>
               <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Re-analyze
             </Button>
