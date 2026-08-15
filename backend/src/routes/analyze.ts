@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { ParsedResumeSchema, AnalyzeApiResponse } from '../types/resume';
-import { aiOrchestrator, AIOrchestrationError } from '../ai/aiOrchestrator';
+import { aiOrchestrator, AIOrchestrationError, InvalidResumeDocumentError } from '../ai/aiOrchestrator';
+import { validateResumeContent } from '../parser/resumeContentValidator';
 
 const router = Router();
 
@@ -30,6 +31,21 @@ router.post('/', async (req: Request, res: Response) => {
     const rawTextLength = data.rawText ? data.rawText.trim().length : 0;
     const hasPdfBase64 = Boolean(data.pdfBase64 && data.pdfBase64.length > 0);
 
+    // If text resume, perform content validation check
+    if (!data.isVisualResume && rawTextLength >= 20) {
+      const contentCheck = validateResumeContent(data);
+      if (!contentCheck.isValidResume) {
+        console.warn(`[API /api/analyze] [${correlationId}] Rejected non-resume document: ${contentCheck.reason}`);
+        return res.status(422).json({
+          success: false,
+          error: contentCheck.reason || 'The uploaded document does not appear to be a valid Resume or CV.',
+          category: 'INVALID_RESUME_DOCUMENT',
+          correlationId,
+          durationMs: Date.now() - startTime,
+        });
+      }
+    }
+
     console.log(`[API /api/analyze] [${correlationId}] Analyzing resume: rawTextLength=${rawTextLength}, hasPdfBase64=${hasPdfBase64}, isVisual=${Boolean(data.isVisualResume)}, forceRefresh=${forceRefresh}`);
 
     const result = await aiOrchestrator.analyzeResume(data, correlationId, jobDescription, forceRefresh);
@@ -57,6 +73,20 @@ router.post('/', async (req: Request, res: Response) => {
     const durationMs = Date.now() - startTime;
     let errorMessage = error instanceof Error ? error.message : 'Unknown analysis error';
     let category = 'AI_ANALYSIS_ERROR';
+    let statusCode = 502;
+
+    if (error instanceof InvalidResumeDocumentError) {
+      category = 'INVALID_RESUME_DOCUMENT';
+      statusCode = 422;
+      console.warn(`[API /api/analyze] [${correlationId}] Document rejected: ${errorMessage}`);
+      return res.status(statusCode).json({
+        success: false,
+        error: errorMessage,
+        category,
+        correlationId,
+        durationMs,
+      });
+    }
 
     if (error instanceof AIOrchestrationError) {
       category = 'ORCHESTRATION_FAILURE';
@@ -70,7 +100,7 @@ router.post('/', async (req: Request, res: Response) => {
       console.error(`[API /api/analyze] [${correlationId}] Exception after ${durationMs}ms:`, errorMessage);
     }
 
-    return res.status(502).json({
+    return res.status(statusCode).json({
       success: false,
       error: `AI analysis failed: ${errorMessage}`,
       category,

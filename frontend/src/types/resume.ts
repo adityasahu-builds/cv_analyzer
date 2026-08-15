@@ -21,6 +21,7 @@ export interface ResumeAnalysisReport {
   weaknesses: string[];
   recommendations: string[];
   missingKeywords: string[];
+  detectedKeywords?: string[];
   improvedBullets?: { original: string; improved: string; reason: string }[];
   rewrittenSummary?: string;
   confidenceScore: number;

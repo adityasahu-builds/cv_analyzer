@@ -157,6 +157,81 @@ export function calculateDeterministicOverallScore(scores: {
   return Math.min(100, Math.max(0, Math.round(weightedScore)));
 }
 
+const BANNED_MISSING_KEYWORDS = new Set([
+  'work experience', 'experience', 'employment', 'employment history', 'work history', 'professional experience',
+  'technical skills', 'skills', 'core competencies', 'qualifications', 'proficiencies',
+  'education', 'academic background', 'academic history', 'academic details',
+  'projects', 'personal projects', 'key projects', 'academic projects',
+  'summary', 'professional summary', 'profile', 'about me', 'objective', 'career objective',
+  'certifications', 'certificates', 'achievements', 'awards', 'languages',
+  'contact details', 'contact info', 'personal details', 'personal information',
+  'resume', 'cv', 'curriculum vitae', 'references', 'declaration', 'internship', 'internships'
+]);
+
+export function processKeywords(
+  rawMissingKeywords: string[] | undefined,
+  rawDetectedKeywords: string[] | undefined,
+  resumeData: ParsedResumeData
+): { detectedKeywords: string[]; missingKeywords: string[] } {
+  const detectedSet = new Set<string>();
+
+  // 1. Gather detected keywords from parsed skills
+  if (resumeData.skills && Array.isArray(resumeData.skills)) {
+    for (const skillCat of resumeData.skills) {
+      if (skillCat.items && Array.isArray(skillCat.items)) {
+        for (const item of skillCat.items) {
+          const trimmed = item.trim();
+          if (trimmed.length >= 2 && !BANNED_MISSING_KEYWORDS.has(trimmed.toLowerCase())) {
+            detectedSet.add(trimmed);
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Add detected keywords from AI
+  if (rawDetectedKeywords && Array.isArray(rawDetectedKeywords)) {
+    for (const kw of rawDetectedKeywords) {
+      const trimmed = kw.trim();
+      if (trimmed.length >= 2 && !BANNED_MISSING_KEYWORDS.has(trimmed.toLowerCase())) {
+        detectedSet.add(trimmed);
+      }
+    }
+  }
+
+  const detectedKeywords = Array.from(detectedSet);
+  const detectedLower = new Set(detectedKeywords.map((k) => k.toLowerCase()));
+
+  // 3. Sanitize missing keywords (remove section names & already detected keywords)
+  const cleanMissing: string[] = [];
+  const seenMissing = new Set<string>();
+
+  if (rawMissingKeywords && Array.isArray(rawMissingKeywords)) {
+    for (const kw of rawMissingKeywords) {
+      const trimmed = kw.trim();
+      const lower = trimmed.toLowerCase();
+
+      if (trimmed.length < 2 || BANNED_MISSING_KEYWORDS.has(lower)) {
+        continue;
+      }
+      if (detectedLower.has(lower)) {
+        continue;
+      }
+      if (seenMissing.has(lower)) {
+        continue;
+      }
+
+      seenMissing.add(lower);
+      cleanMissing.push(trimmed);
+    }
+  }
+
+  return {
+    detectedKeywords,
+    missingKeywords: cleanMissing,
+  };
+}
+
 /**
  * Applies the deterministic scoring layer to an AI report.
  */
@@ -210,10 +285,19 @@ export function applyDeterministicScoring(
     confidenceScore = Math.min(99, Math.max(80, Math.round(confidenceScore)));
   }
 
+  // Process keywords (clean missing keywords and attach actual detected keywords)
+  const { detectedKeywords, missingKeywords } = processKeywords(
+    report.missingKeywords,
+    report.detectedKeywords,
+    resumeData
+  );
+
   return {
     ...report,
     overallScore,
     sections,
     confidenceScore,
+    detectedKeywords,
+    missingKeywords,
   };
 }

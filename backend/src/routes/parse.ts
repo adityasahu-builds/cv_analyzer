@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { validateResumeFile } from '../parser/fileValidator';
 import { parseResumeBuffer } from '../parser/resumeParser';
+import { validateResumeContent } from '../parser/resumeContentValidator';
 import { ParseApiResponse } from '../types/resume';
 
 const router = Router();
@@ -58,8 +59,21 @@ router.post('/', upload.single('file'), async (req: Request, res: Response) => {
       console.warn(`[API /api/parse] Document text length (${characterCount}) is too short and no visual PDF available.`);
       return res.status(422).json({
         success: false,
-        error: "Couldn't read text from this resume. Please upload a valid text or visual PDF or DOCX file.",
+        error: "Couldn't read text from this document. Please upload a valid text or visual PDF or DOCX resume file.",
       });
+    }
+
+    // Content Validation: Ensure text content represents a Resume/CV rather than notes or unrelated text
+    if (!parsedData.isVisualResume && characterCount >= 20) {
+      const contentValidation = validateResumeContent(parsedData);
+      if (!contentValidation.isValidResume) {
+        console.warn(`[API /api/parse] Resume content validation failed for '${fileName}':`, contentValidation.reason);
+        return res.status(422).json({
+          success: false,
+          error: contentValidation.reason || 'The uploaded document does not appear to be a valid Resume or CV.',
+          category: 'INVALID_RESUME_DOCUMENT',
+        });
+      }
     }
 
     const responseData: ParseApiResponse = {

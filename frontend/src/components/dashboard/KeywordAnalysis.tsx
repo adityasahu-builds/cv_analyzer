@@ -10,13 +10,13 @@ interface KeywordAnalysisProps {
 
 export const KeywordAnalysis: React.FC<KeywordAnalysisProps> = ({
   missingKeywords = [],
-  detectedKeywords = ['TypeScript', 'React', 'Next.js', 'Node.js', 'REST APIs', 'Git', 'Agile', 'CI/CD'],
+  detectedKeywords = [],
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedKw, setCopiedKw] = useState<string | null>(null);
 
   const total = missingKeywords.length + detectedKeywords.length;
-  const coveragePct = Math.round((detectedKeywords.length / (total || 1)) * 100);
+  const coveragePct = total > 0 ? Math.round((detectedKeywords.length / total) * 100) : 100;
 
   const filteredMissing = missingKeywords.filter(kw =>
     kw.toLowerCase().includes(searchTerm.toLowerCase())
@@ -94,7 +94,9 @@ export const KeywordAnalysis: React.FC<KeywordAnalysisProps> = ({
                 ✓ {kw}
               </span>
             )) : (
-              <span className="text-xs text-[#6B7280]">No matches</span>
+              <span className="text-xs text-[#6B7280]">
+                {detectedKeywords.length === 0 ? 'No specific technical keywords detected.' : 'No matches'}
+              </span>
             )}
           </div>
         </div>

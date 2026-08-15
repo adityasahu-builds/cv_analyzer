@@ -95,10 +95,9 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-base font-bold text-[#1A1A1A]">{filename}</p>
                 <span className="text-xs font-semibold text-[#059669] bg-[#059669]/10 border border-[#059669]/20 rounded-[8px] px-2.5 py-0.5 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Analyzed via {provider}
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Verified ATS Audit
                 </span>
               </div>
-              <p className="text-xs text-[#6B7280] mt-0.5 font-mono">ID: {requestId}</p>
             </div>
           </div>
 
@@ -192,7 +191,10 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           )}
 
           {(activeTab === 'overview' || activeTab === 'keywords') && (
-            <KeywordAnalysis missingKeywords={report.missingKeywords || []} />
+            <KeywordAnalysis
+              missingKeywords={report.missingKeywords || []}
+              detectedKeywords={report.detectedKeywords || []}
+            />
           )}
 
           {(activeTab === 'overview' || activeTab === 'summary') && (

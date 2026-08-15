@@ -7,6 +7,13 @@ import { applyDeterministicScoring, SCORING_VERSION } from '../services/determin
 import { analysisCache } from '../services/analysisCache';
 
 
+export class InvalidResumeDocumentError extends Error {
+  constructor(message: string = 'The uploaded document does not appear to be a valid Resume or CV.') {
+    super(message);
+    this.name = 'InvalidResumeDocumentError';
+  }
+}
+
 export class AIOrchestrationError extends Error {
   primaryProvider: string;
   primaryError: string;
@@ -104,6 +111,13 @@ export class AIOrchestrator {
         throw new Error(`Unsupported primary provider: '${config.primaryProvider}'`);
       }
 
+      // Check if AI determined the document is not a resume
+      if (rawReport.isResume === false) {
+        const rejectionMsg = rawReport.rejectionReason || 'The uploaded document appears to be study/lecture notes or non-resume content rather than a Resume or CV. Please upload a valid Resume or CV.';
+        console.warn(`[AIOrchestrator] [${correlationId}] Primary Provider rejected document as non-resume: ${rejectionMsg}`);
+        throw new InvalidResumeDocumentError(rejectionMsg);
+      }
+
       // Apply deterministic scoring layer
       const report = applyDeterministicScoring(rawReport, normalizedResume, jobDescription);
       const durationMs = Date.now() - startTime;
@@ -136,6 +150,9 @@ export class AIOrchestrator {
         cached: false,
       };
     } catch (primaryErr) {
+      if (primaryErr instanceof InvalidResumeDocumentError) {
+        throw primaryErr;
+      }
       primaryErrorMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
       console.warn(`[AIOrchestrator] Primary Provider (${config.primaryProvider}) failed: ${primaryErrorMsg}`);
     }
@@ -152,6 +169,12 @@ export class AIOrchestrator {
           rawFallbackReport = await analyzeWithGemini(normalizedResume, correlationId, jobDescription);
         } else {
           throw new Error(`Unsupported fallback provider: '${config.fallbackProvider}'`);
+        }
+
+        if (rawFallbackReport.isResume === false) {
+          const rejectionMsg = rawFallbackReport.rejectionReason || 'The uploaded document appears to be study/lecture notes or non-resume content rather than a Resume or CV. Please upload a valid Resume or CV.';
+          console.warn(`[AIOrchestrator] [${correlationId}] Fallback Provider rejected document as non-resume: ${rejectionMsg}`);
+          throw new InvalidResumeDocumentError(rejectionMsg);
         }
 
         // Apply deterministic scoring layer

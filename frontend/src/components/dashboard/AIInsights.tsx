@@ -79,7 +79,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ report, provider = 'AI E
             <span className="font-bold text-[#059669]">Top 5% Candidate Tier</span>.
           </p>
           <p className="text-xs text-[#6B7280] mt-2 font-mono">
-            Diagnostic verified via {provider}
+            Diagnostic verified via ResumeIQ AI Engine
           </p>
         </div>
       ),

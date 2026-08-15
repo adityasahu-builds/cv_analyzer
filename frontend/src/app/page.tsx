@@ -266,13 +266,19 @@ export default function Home() {
           {/* Error */}
           {analysisError && (
             <div className="mt-6 max-w-2xl mx-auto">
-              <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-[10px] text-sm">
-                <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-[10px] text-sm">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-red-800">Analysis failed</p>
-                  <p className="text-red-700 mt-0.5 leading-relaxed">{analysisError}</p>
+                  <p className="font-semibold text-amber-900">
+                    {analysisError.toLowerCase().includes('resume') || analysisError.toLowerCase().includes('cv') || analysisError.toLowerCase().includes('notes')
+                      ? 'Invalid Document Uploaded'
+                      : 'Analysis Failed'}
+                  </p>
+                  <p className="text-amber-800 mt-0.5 leading-relaxed">{analysisError}</p>
                   <p className="text-caption text-[#6B7280] mt-2">
-                    Please verify backend server connection and try again.
+                    {analysisError.toLowerCase().includes('resume') || analysisError.toLowerCase().includes('notes')
+                      ? 'Please upload a valid Resume or CV document (PDF / DOCX) containing your experience, education, and skills.'
+                      : 'Please check your document and try again.'}
                   </p>
                 </div>
               </div>

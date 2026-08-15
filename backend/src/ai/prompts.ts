@@ -36,7 +36,14 @@ export function buildResumeAnalysisPrompt(resumeData: ParsedResumeData, jobDescr
 
   return `
 You are an executive ATS (Applicant Tracking System) Auditor and Senior Technical Career Coach.
-${headerNotice} Provide a rigorous, objective, and highly consistent evaluation.
+${headerNotice}
+
+STEP 1: DOCUMENT TYPE VALIDATION (CRITICAL)
+First, verify whether the provided document is actually a legitimate professional Resume or CV (Curriculum Vitae).
+- If the document is NOT a resume/CV (e.g. it is class/study notes, lecture material, textbook chapter, homework/assignment, test/exam paper, mathematical proof, recipe, source code dump, invoice, article, or random text):
+  You MUST set "isResume": false and "rejectionReason": "The uploaded document appears to be study/lecture notes or non-resume content rather than a Resume or CV. Please upload a valid Resume or CV." (You may fill other fields with placeholders/defaults).
+- If the document IS a valid Resume or CV:
+  Set "isResume": true, leave "rejectionReason": "", and perform the complete evaluation following the rubric.
 
 SCORING RUBRIC BOUNDARIES (0 to 100 per dimension):
 1. ATS Formatting & Structure (formatting):
@@ -66,6 +73,8 @@ SCORING RUBRIC BOUNDARIES (0 to 100 per dimension):
 Return ONLY a valid JSON object matching this exact JSON schema:
 
 {
+  "isResume": true,
+  "rejectionReason": "string (only if isResume is false)",
   "summary": "string (executive 2-3 sentence overview of resume quality and ATS readiness)",
   "sections": {
     "formatting": {
@@ -104,7 +113,8 @@ Return ONLY a valid JSON object matching this exact JSON schema:
   "strengths": ["string", "string", "string"],
   "weaknesses": ["string", "string", "string"],
   "recommendations": ["string", "string", "string"],
-  "missingKeywords": ["string", "string"],
+  "detectedKeywords": ["string (actual technical skills, tools, frameworks found in resume)"],
+  "missingKeywords": ["string (industry technical/role keywords missing for candidate - NEVER list section names like Work Experience or Education)"],
   "improvedBullets": [
     {
       "original": "string",
@@ -119,7 +129,8 @@ Return ONLY a valid JSON object matching this exact JSON schema:
 IMPORTANT CONSTRAINTS:
 1. Return ONLY the raw JSON object. Do not include markdown code block backticks such as \`\`\`json.
 2. Evaluate each section strictly according to the rubric boundaries.
-3. Be fair, analytical, and highly constructive.
+3. If not a resume, isResume must be false.
+4. detectedKeywords must be actual technologies/skills found in the text. missingKeywords must be relevant industry skills (never section names).
 ${jdBlock}${contentBlock}`;
 }
 
@@ -145,8 +156,11 @@ export function buildCompactGroqPrompt(resumeData: ParsedResumeData, jobDescript
   const normalizedText = smartTruncateResumeText(cleanText, 9000);
   const jdText = jobDescription ? smartTruncateResumeText(jobDescription, 2000) : '';
 
-  return `Analyze this resume and return JSON matching this schema:
+  return `First verify if this text is a real Resume/CV. If it is study notes, assignment, article, or non-resume text, set isResume to false and provide rejectionReason.
+Analyze and return ONLY JSON matching this schema:
 {
+  "isResume": true,
+  "rejectionReason": "string",
   "summary": "string",
   "sections": {
     "formatting": { "name": "ATS Formatting & Structure", "score": number, "weight": 0.25, "feedback": "string", "strengths": ["string"], "improvements": ["string"] },
@@ -157,6 +171,7 @@ export function buildCompactGroqPrompt(resumeData: ParsedResumeData, jobDescript
   "strengths": ["string"],
   "weaknesses": ["string"],
   "recommendations": ["string"],
+  "detectedKeywords": ["string"],
   "missingKeywords": ["string"],
   "improvedBullets": [{ "original": "string", "improved": "string", "reason": "string" }],
   "rewrittenSummary": "string",

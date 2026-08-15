@@ -22,6 +22,7 @@ export const ResumeAnalysisReportSchema = z.object({
   weaknesses: z.array(z.string()).default([]),
   recommendations: z.array(z.string()).default([]),
   missingKeywords: z.array(z.string()).default([]),
+  detectedKeywords: z.array(z.string()).optional().default([]),
   improvedBullets: z.array(
     z.object({
       original: z.string(),
@@ -31,6 +32,8 @@ export const ResumeAnalysisReportSchema = z.object({
   ).optional().default([]),
   rewrittenSummary: z.string().optional().default(''),
   confidenceScore: z.number().min(0).max(100).default(95),
+  isResume: z.boolean().default(true),
+  rejectionReason: z.string().optional(),
 });
 
 export type ResumeAnalysisReportSchemaType = z.infer<typeof ResumeAnalysisReportSchema>;
